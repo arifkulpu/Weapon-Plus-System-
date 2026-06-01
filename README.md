@@ -10,7 +10,7 @@ A premium, performance-optimized **Skyrim Special Edition (v1.6.1170)** SKSE C++
 
 ### Features
 * **Blacksmith NPC Interaction**: Point your crosshair at any blacksmith NPC and press the **L** key to open the interactive upgrade menu.
-* **Tier-Based Upgrades (Up to +9)**: Upgrade your equipped weapons up to +9. Each level requires gold and increases the base weapon damage dynamically (+10% damage bonus per level).
+* **Tier-Based Upgrades (Up to +9)**: Upgrade your equipped weapons up to +9. Each level requires gold and increases the base weapon damage dynamically by adding flat damage (+1 damage bonus per level: +1 at level 1, +9 at level 9).
 * **Dynamic Animated Glow Effects**: Upgraded weapons receive an emissive magical glow that pulses and breathes in real time. Both pulse speed and intensity scale with the upgrade level:
   * **+1**: White — very slow, subtle shimmer (0.3 Hz)
   * **+2**: Light Blue (0.4 Hz)
@@ -43,7 +43,7 @@ Skyrim Special Edition için geliştirilmiş, performans odaklı ve son teknoloj
 
 ### Özellikler
 * **Demirci Etkileşimi**: Hedef göstergenizi (crosshair) herhangi bir demirci NPC'ye doğrultup **L** tuşuna basarak yükseltme menüsünü açabilirsiniz.
-* **9 Aşamalı Yükseltme (+9'a Kadar)**: Kuşanmış olduğunuz silahları altın karşılığında +9 seviyeye kadar yükseltebilirsiniz. Her seviye silahın taban hasarını dinamik olarak artırır (seviye başına +%10 hasar bonusu).
+* **9 Aşamalı Yükseltme (+9'a Kadar)**: Kuşanmış olduğunuz silahları altın karşılığında +9 seviyeye kadar yükseltebilirsiniz. Her seviye silahın taban hasarını sabit (flat) olarak artırır (seviye başına +1 hasar bonusu: +1 seviyede +1 hasar, +9 seviyede +9 hasar).
 * **Dinamik Animasyonlu Parlama Efektleri**: Yükseltilen silahlar, gerçek zamanlı olarak yanıp sönen büyülü bir ışıma kazanır. Yanıp sönme hızı ve parlaklık yoğunluğu yükseltme seviyesiyle birlikte artar:
   * **+1**: Beyaz — çok yavaş, hafif pırıltı (0.3 Hz)
   * **+2**: Açık Mavi (0.4 Hz)

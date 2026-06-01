@@ -171,7 +171,7 @@ extern "C" void __std_regex_transform_primary_char() {}
         }
 
         float orig   = originalDamage[weaponRefId];
-        float newDmg = orig * damageBonus(newLevel);
+        float newDmg = orig + static_cast<float>(newLevel);
         weapon->attackDamage = static_cast<uint16_t>(std::round(newDmg));
 
         std::string weaponNameStr = weapon->GetName() ? weapon->GetName() : "Silah";
@@ -186,7 +186,7 @@ extern "C" void __std_regex_transform_primary_char() {}
 
         // Notify player
         std::string msg = std::format("{} +{} seviyesine yükseltildi! (+{} hasar)",
-            weaponNameStr, newLevel, newLevel * 10);
+            weaponNameStr, newLevel, newLevel);
         RE::DebugNotification(msg.c_str());
 
         // Refresh glow immediately after upgrade

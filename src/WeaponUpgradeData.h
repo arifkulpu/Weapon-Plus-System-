@@ -10,10 +10,6 @@ namespace plugin {
         return (currentLevel + 1) * 100;
     }
 
-    // Damage multiplier bonus per level: +10% per level
-    inline float damageBonus(int level) {
-        return 1.0f + (level * 0.10f);
-    }
 
     /**
      * WeaponUpgradeData - Singleton that stores the + level for each weapon (by FormID).
