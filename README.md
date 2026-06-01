@@ -11,6 +11,9 @@ A premium, performance-optimized **Skyrim Special Edition (v1.6.1170)** SKSE C++
 ### Features
 * **Blacksmith NPC Interaction**: Point your crosshair at any blacksmith NPC and press the **L** key to open the interactive upgrade menu.
 * **Tier-Based Upgrades (Up to +9)**: Upgrade your equipped weapons up to +9. Each level requires gold and increases the base weapon damage dynamically by adding flat damage (+1 damage bonus per level: +1 at level 1, +9 at level 9).
+* **Upgrade Success Rate & Downgrade Risk**: 
+  * Upgrading is not guaranteed to succeed! The success rate starts at **100%** for a +1 attempt, and scales down to **25%** for a +9 attempt (linearly scaling down per level).
+  * On upgrade failure, the weapon's level **drops by 1 level** (e.g. failing a +5 attempt drops it to +3). Level cannot drop below +0.
 * **Dynamic Animated Glow Effects**: Upgraded weapons receive an emissive magical glow that pulses and breathes in real time. Both pulse speed and intensity scale with the upgrade level:
   * **+1**: White — very slow, subtle shimmer (0.3 Hz)
   * **+2**: Light Blue (0.4 Hz)
@@ -32,7 +35,7 @@ A premium, performance-optimized **Skyrim Special Edition (v1.6.1170)** SKSE C++
 1. Equip the weapon you want to upgrade in either hand.
 2. Approach any blacksmith NPC and point your crosshair at them.
 3. Press **L** to open the upgrade menu.
-4. If you have enough gold, confirm the upgrade!
+4. If you have enough gold, check the success chance and confirm the upgrade!
 5. **Remember to save your game (F5 or manual save) after upgrading so your weapon upgrades persist!**
 
 ---
@@ -44,6 +47,9 @@ Skyrim Special Edition için geliştirilmiş, performans odaklı ve son teknoloj
 ### Özellikler
 * **Demirci Etkileşimi**: Hedef göstergenizi (crosshair) herhangi bir demirci NPC'ye doğrultup **L** tuşuna basarak yükseltme menüsünü açabilirsiniz.
 * **9 Aşamalı Yükseltme (+9'a Kadar)**: Kuşanmış olduğunuz silahları altın karşılığında +9 seviyeye kadar yükseltebilirsiniz. Her seviye silahın taban hasarını sabit (flat) olarak artırır (seviye başına +1 hasar bonusu: +1 seviyede +1 hasar, +9 seviyede +9 hasar).
+* **Başarı Şansı ve Seviye Düşme Riski**:
+  * Yükseltme her zaman başarılı olmaz! Başarı şansı +1 denemesinde **%100** iken, +9 denemesinde **%25**'e kadar doğrusal olarak düşer.
+  * Başarısız yükseltme girişimlerinde silah **1 seviye geri düşer** (örn. +4'ten +5'e denerken başarısız olunursa silah +3'e geriler). Seviye +0'ın altına düşmez.
 * **Dinamik Animasyonlu Parlama Efektleri**: Yükseltilen silahlar, gerçek zamanlı olarak yanıp sönen büyülü bir ışıma kazanır. Yanıp sönme hızı ve parlaklık yoğunluğu yükseltme seviyesiyle birlikte artar:
   * **+1**: Beyaz — çok yavaş, hafif pırıltı (0.3 Hz)
   * **+2**: Açık Mavi (0.4 Hz)
@@ -65,7 +71,7 @@ Skyrim Special Edition için geliştirilmiş, performans odaklı ve son teknoloj
 1. Yükseltmek istediğiniz silahı elinize kuşanın.
 2. Herhangi bir demirci NPC'ye yaklaşın ve hedef göstergenizi ona doğrultun.
 3. **L** tuşuna basarak yükseltme ekranını açın.
-4. Yeterli altınınız varsa yükseltmeyi onaylayın!
+4. Yeterli altınınız varsa başarı şansını kontrol edip yükseltmeyi onaylayın!
 5. **Silahınızı yükselttikten sonra oyunu kaydetmeyi (F5 veya normal kayıt) unutmayın; böylece yükseltmeleriniz kalıcı olarak kaydedilecektir!**
 
 ---
