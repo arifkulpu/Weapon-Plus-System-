@@ -2,7 +2,7 @@
 
 [TR] Türkçe açıklama aşağıdadır.
 
-A premium, performance-optimized **Skyrim Special Edition (v1.6.1170)** SKSE C++ plugin that introduces a comprehensive weapon upgrade system. Players can level up their weapons by interacting with blacksmith NPCs, gaining both dynamic damage scaling and beautiful, tier-based visual glow effects.
+A premium, performance-optimized **Skyrim Special Edition (v1.6.1170)** SKSE C++ plugin that introduces a comprehensive weapon upgrade system. Players can level up their weapons by interacting with blacksmith NPCs, gaining both dynamic damage scaling and beautiful, tier-based animated glow effects.
 
 ---
 
@@ -11,20 +11,22 @@ A premium, performance-optimized **Skyrim Special Edition (v1.6.1170)** SKSE C++
 ### Features
 * **Blacksmith NPC Interaction**: Point your crosshair at any blacksmith NPC and press the **L** key to open the interactive upgrade menu.
 * **Tier-Based Upgrades (Up to +9)**: Upgrade your equipped weapons up to +9. Each level requires gold and increases the base weapon damage dynamically (+10% damage bonus per level).
-* **Dynamic Visual Glow Effects**: Upgraded weapons receive an emissive magical glow that scales in intensity and changes color based on the upgrade level:
-  * **+1**: White
-  * **+2**: Light Blue
-  * **+3**: Deep Blue
-  * **+4**: Cyan
-  * **+5**: Green
-  * **+6**: Yellow
-  * **+7**: Orange
-  * **+8**: Red-Orange
-  * **+9**: Deep Red (Magnum Opus)
+* **Dynamic Animated Glow Effects**: Upgraded weapons receive an emissive magical glow that pulses and breathes in real time. Both pulse speed and intensity scale with the upgrade level:
+  * **+1**: White — very slow, subtle shimmer (0.3 Hz)
+  * **+2**: Light Blue (0.4 Hz)
+  * **+3**: Deep Blue (0.5 Hz)
+  * **+4**: Cyan (0.6 Hz)
+  * **+5**: Green (0.7 Hz)
+  * **+6**: Yellow (0.8 Hz)
+  * **+7**: Orange (0.9 Hz)
+  * **+8**: Red-Orange (1.0 Hz)
+  * **+9**: Deep Red — fast, dramatic flash (1.1 Hz)
+* **Level-Scaled Pulse Animation**: The glow breathes at a unique speed for each upgrade tier. At +1 the pulse is barely visible (~3.3 second cycle), while at +9 it flashes intensely (~0.9 second cycle). Brightness amplitude also grows with level.
 * **First-Person & Third-Person Support**: The glowing visual shader is automatically refreshed and perfectly visible in both 1st-person arms and 3rd-person world models.
-* **Smart UI & Camera Event Tracking**: Zero performance overhead! The plugin is fully event-driven, listening directly to `TESEquipEvent`, `SKSE::CameraEvent` (1st/3rd person switches), and `RE::MenuOpenCloseEvent` (when closing inventory/favorites/crafting menus) to safely re-apply glows asynchronously without standard heavy frame loops.
+* **Smart UI & Camera Event Tracking**: Zero performance overhead! The plugin is fully event-driven, listening directly to `TESEquipEvent`, `SKSE::CameraEvent` (1st/3rd person switches), and `RE::MenuOpenCloseEvent` (when closing inventory/favorites/crafting menus) to safely re-apply glows asynchronously without heavy frame loops.
+* **Background Animation Thread**: A dedicated ~30 fps background thread advances the glow timer and dispatches a single update task to the main thread each tick — no recursive scheduling, no hangs.
 * **SKSE Cosave Serialization**: Upgrade levels are fully persistent and cleanly saved and loaded inside your standard Skyrim save files.
-* **Community Shaders Compatibility**: Built with custom direct material emittance overrides bypasses the standard BSEffectShader data structure, ensuring 100% crash-free stability when running *Community Shaders* (including Metals and Dynamic Cubemaps).
+* **Community Shaders Compatibility**: Built with custom direct material emittance overrides that bypass the standard BSEffectShader data structure, ensuring 100% crash-free stability when running *Community Shaders* (including Metals and Dynamic Cubemaps).
 
 ### How to Use
 1. Equip the weapon you want to upgrade in either hand.
@@ -37,23 +39,25 @@ A premium, performance-optimized **Skyrim Special Edition (v1.6.1170)** SKSE C++
 
 ## Türkçe Versiyon
 
-Skyrim Special Edition için geliştirilmiş, performans odaklı ve son teknoloji bir **SKSE C++ eklentisidir**. Oyuncuların demirci NPC'ler ile etkileşime girerek silahlarını seviyelendirmelerini, hasarlarını artırmalarını ve yükseltme seviyesine göre harika görsel parlama efektleri kazanmalarını sağlar.
+Skyrim Special Edition için geliştirilmiş, performans odaklı ve son teknoloji bir **SKSE C++ eklentisidir**. Oyuncuların demirci NPC'ler ile etkileşime girerek silahlarını seviyelendirmelerini, hasarlarını artırmalarını ve yükseltme seviyesine göre gerçek zamanlı animasyonlu görsel parlama efektleri kazanmalarını sağlar.
 
 ### Özellikler
 * **Demirci Etkileşimi**: Hedef göstergenizi (crosshair) herhangi bir demirci NPC'ye doğrultup **L** tuşuna basarak yükseltme menüsünü açabilirsiniz.
 * **9 Aşamalı Yükseltme (+9'a Kadar)**: Kuşanmış olduğunuz silahları altın karşılığında +9 seviyeye kadar yükseltebilirsiniz. Her seviye silahın taban hasarını dinamik olarak artırır (seviye başına +%10 hasar bonusu).
-* **Dinamik Görsel Parlama Efektleri**: Yükseltilen silahlar, seviyesine göre renk ve yoğunluk değiştiren büyülü bir ışıma kazanır:
-  * **+1**: Beyaz
-  * **+2**: Açık Mavi
-  * **+3**: Koyu Mavi
-  * **+4**: Turkuaz / Camgöbeği
-  * **+5**: Yeşil
-  * **+6**: Sarı
-  * **+7**: Turuncu
-  * **+8**: Kırmızı-Turuncu
-  * **+9**: Derin Kırmızı (Efsanevi Seviye)
+* **Dinamik Animasyonlu Parlama Efektleri**: Yükseltilen silahlar, gerçek zamanlı olarak yanıp sönen büyülü bir ışıma kazanır. Yanıp sönme hızı ve parlaklık yoğunluğu yükseltme seviyesiyle birlikte artar:
+  * **+1**: Beyaz — çok yavaş, hafif pırıltı (0.3 Hz)
+  * **+2**: Açık Mavi (0.4 Hz)
+  * **+3**: Koyu Mavi (0.5 Hz)
+  * **+4**: Turkuaz / Camgöbeği (0.6 Hz)
+  * **+5**: Yeşil (0.7 Hz)
+  * **+6**: Sarı (0.8 Hz)
+  * **+7**: Turuncu (0.9 Hz)
+  * **+8**: Kırmızı-Turuncu (1.0 Hz)
+  * **+9**: Derin Kırmızı — hızlı, dramatik flaş (1.1 Hz)
+* **Seviyeye Göre Pulse Animasyonu**: Her yükseltme kademesi kendine özgü bir hızda nefes alır. +1'de parlama neredeyse görünmez (~3.3 saniyelik döngü), +9'da ise yoğun biçimde yanıp söner (~0.9 saniyelik döngü). Parlaklık genliği de seviyeyle birlikte büyür.
 * **1. Şahıs & 3. Şahıs Kamera Desteği**: Silah parlamaları hem 3. şahıs (dünya) görünümünde hem de 1. şahıs (kamera kolları) görünümünde otomatik olarak yenilenir ve mükemmel çalışır.
 * **Akıllı Etkinlik Takibi**: Sıfır performans kaybı! Ağır per-frame (kare başı) döngüler yerine; kuşanma olaylarını (`TESEquipEvent`), kamera değişimlerini (`SKSE::CameraEvent`) ve envanter/kısayol menü kapanışlarını (`RE::MenuOpenCloseEvent`) dinleyerek parlamayı tamamen asenkron ve güvenli şekilde günceller.
+* **Arka Plan Animasyon Thread'i**: Özel bir ~30 fps arka plan thread'i parlama zamanlayıcısını ilerletir ve her adımda ana thread'e tek bir güncelleme görevi gönderir — recursive zamanlama yok, askı (hang) yok.
 * **SKSE Cosave Kayıt Sistemi**: Silahlarınızın seviyeleri tamamen kalıcıdır; oyunu kaydettiğinizde otomatik olarak `.ess / .cosave` kayıt dosyalarınıza yazılır ve oyunu tekrar açtığınızda sorunsuz bir şekilde yüklenir.
 * **Community Shaders Uyumluluğu**: *Community Shaders* (Metals ve Dynamic Cubemaps dahil) kurulu sistemlerde çökmeye neden olan klasik shader yapısı yerine doğrudan materyal ışıması (`BSLightingShaderProperty`) modifikasyonları kullanılarak %100 kararlılık sağlanmıştır.
 
@@ -68,4 +72,4 @@ Skyrim Special Edition için geliştirilmiş, performans odaklı ve son teknoloj
 
 ## License / Lisans
 
-Copyright (c) 2026 Arif KULPU. All Rights Reserved. — Tüm Hakları Saklıdır. See [LICENSE](file:///c:/Users/pc/Desktop/projeler/Weapon%20Plus%20System/LICENSE.md) for details.
+Copyright (c) 2026 Arif KULPU. All Rights Reserved. — Tüm Hakları Saklıdır. See [LICENSE](LICENSE.md) for details.

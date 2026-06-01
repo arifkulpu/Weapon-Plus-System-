@@ -248,8 +248,10 @@ extern "C" void __std_regex_transform_primary_char() {}
     }
 
     static float pulseFrequency(int level) {
-        return 0.5f + (level - 1) * 0.4375f;
+        // +1=0.3Hz, +2=0.4Hz, +3=0.5Hz ... +9=1.1Hz
+        return 0.3f + (level - 1) * 0.1f;
     }
+
 
     static std::pair<float, float> pulseRange(int level) {
         float peakMult = std::get<3>(glowColorForLevel(level));
