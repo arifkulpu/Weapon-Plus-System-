@@ -78,9 +78,10 @@ namespace plugin {
         RE::Actor* getCrosshairActor() const;
         bool isBlacksmith(RE::Actor* actor) const;
         RE::TESObjectWEAP* getEquippedWeapon(RE::FormID& outRefId) const;
-        void showUpgradeMenu(RE::TESObjectWEAP* weapon, RE::FormID weaponRefId, int currentLevel);
-        void applyUpgrade(RE::TESObjectWEAP* weapon, RE::FormID weaponRefId, int newLevel);
-        void setWeaponDisplayName(RE::TESObjectWEAP* weapon, int level);
+        RE::TESObjectARMO* getEquippedShield(RE::FormID& outRefId) const;
+        void showUpgradeMenu(RE::TESForm* item, RE::FormID weaponRefId, int currentLevel);
+        void applyUpgrade(RE::TESForm* item, RE::FormID weaponRefId, int newLevel);
+        void setWeaponDisplayName(RE::TESForm* item, int level);
 
         // Apply BSEffectShaderData glow to all geometry under a node
         void applyEffectGlow(RE::NiAVObject* node, int level, float t, int depth = 0);
@@ -106,15 +107,15 @@ namespace plugin {
     // ---- MessageBox Callback ----
     class UpgradeMenuCallback : public RE::IMessageBoxCallback {
     public:
-        UpgradeMenuCallback(RE::TESObjectWEAP* weapon, RE::FormID weaponRefId, int currentLevel)
-            : weapon_(weapon), weaponRefId_(weaponRefId), currentLevel_(currentLevel) {}
+        UpgradeMenuCallback(RE::TESForm* item, RE::FormID weaponRefId, int currentLevel)
+            : item_(item), weaponRefId_(weaponRefId), currentLevel_(currentLevel) {}
 
         void Run(RE::IMessageBoxCallback::Message a_button) override;
 
     private:
-        RE::TESObjectWEAP* weapon_;
-        RE::FormID         weaponRefId_;
-        int                currentLevel_;
+        RE::TESForm* item_;
+        RE::FormID   weaponRefId_;
+        int          currentLevel_;
     };
 
 }  // namespace plugin

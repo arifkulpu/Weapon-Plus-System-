@@ -58,6 +58,17 @@ extern "C" void __std_regex_transform_primary_char() {}
         return weapon;
     }
 
+    RE::TESObjectARMO* WeaponUpgradeSystem::getEquippedShield(RE::FormID& outRefId) const {
+        auto player = RE::PlayerCharacter::GetSingleton();
+        if (!player) return nullptr;
+        auto equipped = player->GetEquippedObject(true); // Left hand holds the shield
+        if (!equipped) return nullptr;
+        auto shield = equipped->As<RE::TESObjectARMO>();
+        if (!shield || !shield->IsShield()) return nullptr;
+        outRefId = shield->GetFormID();
+        return shield;
+    }
+
 
     // Main entry point
     // -----------------------------------------------------------------------
@@ -79,43 +90,48 @@ extern "C" void __std_regex_transform_primary_char() {}
             return;
         }
 
-        RE::FormID weaponRefId = 0;
-        auto weapon = getEquippedWeapon(weaponRefId);
-        if (!weapon) {
-            RE::DebugNotification("Silahçı: Önce bir silah kuşanmalısın.");
+        RE::FormID itemRefId = 0;
+        RE::TESForm* item = getEquippedWeapon(itemRefId);
+        if (!item) {
+            item = getEquippedShield(itemRefId);
+        }
+
+        if (!item) {
+            RE::DebugNotification("Silahçı: Önce bir silah veya kalkan kuşanmalısın.");
             return;
         }
 
-        int currentLevel = WeaponUpgradeData::getInstance().getLevel(weaponRefId);
+        int currentLevel = WeaponUpgradeData::getInstance().getLevel(itemRefId);
 
         if (currentLevel >= kMaxPlusLevel) {
-            RE::DebugNotification("Bu silah zaten maksimum seviyeye ulaştı (+9)!");
+            RE::DebugNotification("Bu eşya zaten maksimum seviyeye ulaştı (+9)!");
             return;
         }
 
-        showUpgradeMenu(weapon, weaponRefId, currentLevel);
+        showUpgradeMenu(item, itemRefId, currentLevel);
     }
 
     // -----------------------------------------------------------------------
     // Show upgrade menu
     // -----------------------------------------------------------------------
 
-    void WeaponUpgradeSystem::showUpgradeMenu(RE::TESObjectWEAP* weapon, RE::FormID weaponRefId, int currentLevel) {
+    void WeaponUpgradeSystem::showUpgradeMenu(RE::TESForm* item, RE::FormID itemRefId, int currentLevel) {
         menuOpen_ = true;
 
-        std::string weaponName = weapon->GetName();
-        if (weaponName.empty()) weaponName = "Bilinmeyen Silah";
+        const char* rawName = item ? item->GetName() : nullptr;
+        std::string itemName = (rawName && rawName[0]) ? rawName : "Bilinmeyen Eşya";
 
         int cost = upgradeCost(currentLevel);
+        float chance = successChance(currentLevel) * 100.0f;
 
         std::string title = std::format(
-            "{} +{}\n\nYükseltme maliyeti: {} altın\n\nSeviyeyi +{} yapmak istiyor musun?",
-            weaponName, currentLevel, cost, currentLevel + 1
+            "{} +{}\n\nYükseltme Maliyeti: {} altın\nBaşarı Şansı: {:.0f}%\n\nSeviyeyi +{} yapmak istiyor musun?",
+            itemName, currentLevel, cost, chance, currentLevel + 1
         );
 
-        SKSE::log::info("Opening Upgrade Menu for {}", weaponName);
+        SKSE::log::info("Opening Upgrade Menu for {}", itemName);
 
-        auto callback = RE::make_smart<UpgradeMenuCallback>(weapon, weaponRefId, currentLevel);
+        auto callback = RE::make_smart<UpgradeMenuCallback>(item, itemRefId, currentLevel);
 
         SKSE::log::info("Getting MessageDataFactoryManager...");
         auto factoryManager = RE::MessageDataFactoryManager::GetSingleton();
@@ -161,35 +177,73 @@ extern "C" void __std_regex_transform_primary_char() {}
     // Apply upgrade
     // -----------------------------------------------------------------------
 
-    void WeaponUpgradeSystem::applyUpgrade(RE::TESObjectWEAP* weapon, RE::FormID weaponRefId, int newLevel) {
-        if (!weapon) return;
+    void WeaponUpgradeSystem::applyUpgrade(RE::TESForm* item, RE::FormID itemRefId, int newLevel) {
+        if (!item) return;
+
+        // Try to cast to weapon (shields don't have attack damage)
+        auto* weapon = item->As<RE::TESObjectWEAP>();
 
         static std::unordered_map<RE::FormID, float> originalDamage;
 
-        if (originalDamage.find(weaponRefId) == originalDamage.end()) {
-            originalDamage[weaponRefId] = static_cast<float>(weapon->attackDamage);
+        if (originalDamage.find(itemRefId) == originalDamage.end()) {
+            if (weapon) originalDamage[itemRefId] = static_cast<float>(weapon->attackDamage);
+            else        originalDamage[itemRefId] = 0.0f; // shields don't have attackDamage
         }
 
-        float orig   = originalDamage[weaponRefId];
-        float newDmg = orig + static_cast<float>(newLevel);
-        weapon->attackDamage = static_cast<uint16_t>(std::round(newDmg));
+        float orig = originalDamage[itemRefId];
+        const char* rawName = item->GetName();
+        std::string itemNameStr = (rawName && rawName[0]) ? rawName : "Eşya";
 
-        std::string weaponNameStr = weapon->GetName() ? weapon->GetName() : "Silah";
-        logger::info("Weapon '{}' upgraded to +{}. Damage: {} -> {}",
-            weaponNameStr, newLevel, static_cast<int>(orig), weapon->attackDamage);
+        // Determine upgrade success
+        int currentLevel = newLevel - 1;
+        float chance = successChance(currentLevel);
 
-        // Set inventory display name  "+N WeaponName"
-        setWeaponDisplayName(weapon, newLevel);
+        float roll = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
+        bool success = roll <= chance;
 
-        // Save new level
-        WeaponUpgradeData::getInstance().setLevel(weaponRefId, newLevel);
+        if (success) {
+            // Apply flat damage bonus (only meaningful for weapons)
+            if (weapon) {
+                float newDmg = orig + static_cast<float>(newLevel);
+                weapon->attackDamage = static_cast<uint16_t>(std::round(newDmg));
+                logger::info("Item '{}' upgraded SUCCESS to +{}. Damage: {} -> {}",
+                    itemNameStr, newLevel, static_cast<int>(orig), weapon->attackDamage);
+            } else {
+                logger::info("Item '{}' (shield) upgraded SUCCESS to +{}.", itemNameStr, newLevel);
+            }
 
-        // Notify player
-        std::string msg = std::format("{} +{} seviyesine yükseltildi! (+{} hasar)",
-            weaponNameStr, newLevel, newLevel);
-        RE::DebugNotification(msg.c_str());
+            setWeaponDisplayName(item, newLevel);
+            WeaponUpgradeData::getInstance().setLevel(itemRefId, newLevel);
 
-        // Refresh glow immediately after upgrade
+            std::string msg;
+            if (weapon)
+                msg = std::format("{} +{} seviyesine yükseltildi! (+{} hasar)", itemNameStr, newLevel, newLevel);
+            else
+                msg = std::format("{} +{} seviyesine yükseltildi!", itemNameStr, newLevel);
+            RE::DebugNotification(msg.c_str());
+        } else {
+            int failedLevel = currentLevel;
+            int nextLevel = std::max(0, failedLevel - 1);
+
+            if (weapon) {
+                float newDmg = orig + static_cast<float>(nextLevel);
+                weapon->attackDamage = static_cast<uint16_t>(std::round(newDmg));
+            }
+
+            logger::info("Item '{}' upgraded FAILURE trying +{}. De-leveled: {} -> {}",
+                itemNameStr, newLevel, failedLevel, nextLevel);
+
+            setWeaponDisplayName(item, nextLevel);
+            WeaponUpgradeData::getInstance().setLevel(itemRefId, nextLevel);
+
+            std::string msg;
+            if (nextLevel < failedLevel)
+                msg = std::format("{} yükseltmesi başarısız oldu! Seviye +{} değerine düştü.", itemNameStr, nextLevel);
+            else
+                msg = std::format("{} yükseltmesi başarısız oldu!", itemNameStr);
+            RE::DebugNotification(msg.c_str());
+        }
+
         refreshGlow();
     }
 
@@ -197,19 +251,19 @@ extern "C" void __std_regex_transform_primary_char() {}
     // Set inventory display name
     // -----------------------------------------------------------------------
 
-    void WeaponUpgradeSystem::setWeaponDisplayName(RE::TESObjectWEAP* weapon, int level) {
+    void WeaponUpgradeSystem::setWeaponDisplayName(RE::TESForm* item, int level) {
         auto player = RE::PlayerCharacter::GetSingleton();
-        if (!player || !weapon) return;
+        if (!player || !item) return;
 
-        std::string baseName = weapon->GetName() ? weapon->GetName() : "Silah";
-        std::string newName  = std::format("+{} {}", level, baseName);
+        const char* rawName = item->GetName();
+        std::string baseName = (rawName && rawName[0]) ? rawName : "Eşya";
+        std::string newName  = (level > 0) ? std::format("+{} {}", level, baseName) : baseName;
 
-        // Walk inventory changes to find the equipped instance's ExtraDataList
         auto* changes = player->GetInventoryChanges();
         if (!changes || !changes->entryList) return;
 
         for (auto& entry : *changes->entryList) {
-            if (!entry || entry->object != weapon) continue;
+            if (!entry || entry->object != item) continue;
             if (!entry->extraLists) continue;
 
             for (auto& xList : *entry->extraLists) {
@@ -367,10 +421,14 @@ extern "C" void __std_regex_transform_primary_char() {}
             if (lvR > 0) {
                 auto* n = root->GetObjectByName("WEAPON");
                 if (n) applyEffectGlow(n, lvR, t);
+                auto* b = root->GetObjectByName("Bow");
+                if (b) applyEffectGlow(b, lvR, t);
             }
             if (lvL > 0) {
                 auto* n = root->GetObjectByName("WEAPONL");
                 if (n) applyEffectGlow(n, lvL, t);
+                auto* s = root->GetObjectByName("SHIELD");
+                if (s) applyEffectGlow(s, lvL, t);
             }
         }
     }
@@ -561,11 +619,21 @@ extern "C" void __std_regex_transform_primary_char() {}
                 if (levelR > 0) applyEffectGlow(nodeR, levelR, t);
                 else            clearEffectGlow(nodeR);
             }
+            auto* bowNode = root->GetObjectByName("Bow");
+            if (bowNode) {
+                if (levelR > 0) applyEffectGlow(bowNode, levelR, t);
+                else            clearEffectGlow(bowNode);
+            }
 
             auto* nodeL = root->GetObjectByName("WEAPONL");
             if (nodeL) {
                 if (levelL > 0) applyEffectGlow(nodeL, levelL, t);
                 else            clearEffectGlow(nodeL);
+            }
+            auto* shieldNode = root->GetObjectByName("SHIELD");
+            if (shieldNode) {
+                if (levelL > 0) applyEffectGlow(shieldNode, levelL, t);
+                else            clearEffectGlow(shieldNode);
             }
         }
     }
@@ -614,7 +682,7 @@ extern "C" void __std_regex_transform_primary_char() {}
             }
 
             int newLevel = currentLevel_ + 1;
-            WeaponUpgradeSystem::getInstance().applyUpgrade(weapon_, weaponRefId_, newLevel);
+            WeaponUpgradeSystem::getInstance().applyUpgrade(item_, weaponRefId_, newLevel);
 
         } else {
             logger::info("Upgrade cancelled by player.");

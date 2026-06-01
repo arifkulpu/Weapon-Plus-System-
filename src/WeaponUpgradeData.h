@@ -10,6 +10,16 @@ namespace plugin {
         return (currentLevel + 1) * 100;
     }
 
+    // Success chance for upgrading from currentLevel to currentLevel + 1:
+    // currentLevel 0 (+1 attempt) = 100% (1.0f)
+    // currentLevel 8 (+9 attempt) = 25% (0.25f)
+    inline float successChance(int currentLevel) {
+        if (currentLevel <= 0) return 1.0f;
+        if (currentLevel >= 8) return 0.25f;
+        // Linear step: 100% to 25% over 8 steps -> 75% total span -> 9.375% per level reduction
+        return 1.00f - (currentLevel * 0.09375f);
+    }
+
 
     /**
      * WeaponUpgradeData - Singleton that stores the + level for each weapon (by FormID).
