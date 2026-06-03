@@ -2,7 +2,7 @@
 
 [TR] Türkçe açıklama aşağıdadır.
 
-A premium, performance-optimized **Skyrim Special Edition (v1.6.1170)** SKSE C++ plugin that introduces a comprehensive weapon upgrade system. Players can level up their weapons by interacting with blacksmith NPCs, gaining both dynamic damage scaling and beautiful, tier-based animated glow effects.
+A premium, performance-optimized **Skyrim Special Edition (v1.6.1170)** SKSE C++ plugin that introduces a comprehensive weapon upgrade system. Players can level up their weapons and shields by interacting with blacksmith NPCs, gaining both dynamic damage scaling and beautiful, tier-based animated glow effects — and their **companions** will also glow when wielding upgraded items!
 
 ---
 
@@ -28,7 +28,8 @@ A premium, performance-optimized **Skyrim Special Edition (v1.6.1170)** SKSE C++
 * **First-Person & Third-Person Support**: The glowing visual shader is automatically refreshed and perfectly visible in both 1st-person arms and 3rd-person world models.
 * **Smart UI & Camera Event Tracking**: Zero performance overhead! The plugin is fully event-driven, listening directly to `TESEquipEvent`, `SKSE::CameraEvent` (1st/3rd person switches), and `RE::MenuOpenCloseEvent` (when closing inventory/favorites/crafting menus) to safely re-apply glows asynchronously without heavy frame loops.
 * **Background Animation Thread**: A dedicated ~30 fps background thread advances the glow timer and dispatches a single update task to the main thread each tick — no recursive scheduling, no hangs.
-* **Bow & Shield Glow Support**: Upgraded bows and shields also receive the full animated glow treatment — the glow is applied to the correct NiAV nodes (`Bow`, `SHIELD`) in both first- and third-person views.
+* **Bow & Shield Glow Support**: Upgraded bows and shields also receive the full animated glow treatment — the glow is applied to the correct NiAV nodes (`Bow`, `WeaponBow`, `SHIELD`) in both first- and third-person views.
+* **Companion / Follower Glow Support**: Give an upgraded weapon or shield to your companion and they will also glow! The system scans all nearby actors within ~50 metres every animation tick and applies the correct tier glow to their equipped items. Fully compatible with **NFF (Nether's Follower Framework)** and other follower mods.
 * **SKSE Cosave Serialization**: Upgrade levels are fully persistent and cleanly saved and loaded inside your standard Skyrim save files.
 * **Community Shaders Compatibility**: Built with custom direct material emittance overrides that bypass the standard BSEffectShader data structure, ensuring 100% crash-free stability when running *Community Shaders* (including Metals and Dynamic Cubemaps).
 
@@ -43,7 +44,7 @@ A premium, performance-optimized **Skyrim Special Edition (v1.6.1170)** SKSE C++
 
 ## Türkçe Versiyon
 
-Skyrim Special Edition için geliştirilmiş, performans odaklı ve son teknoloji bir **SKSE C++ eklentisidir**. Oyuncuların demirci NPC'ler ile etkileşime girerek silahlarını seviyelendirmelerini, hasarlarını artırmalarını ve yükseltme seviyesine göre gerçek zamanlı animasyonlu görsel parlama efektleri kazanmalarını sağlar.
+Skyrim Special Edition için geliştirilmiş, performans odaklı ve son teknoloji bir **SKSE C++ eklentisidir**. Oyuncuların demirci NPC'ler ile etkileşime girerek silah ve kalkanlarını seviyelendirmelerini, hasarlarını artırmalarını ve yükseltme seviyesine göre gerçek zamanlı animasyonlu görsel parlama efektleri kazanmalarını sağlar. Yükseltilmiş eşyalar **takipçilerin** elinde de parlar!
 
 ### Özellikler
 * **Demirci Etkileşimi**: Hedef göstergenizi (crosshair) herhangi bir demirci NPC'ye doğrultup **L** tuşuna basarak yükseltme menüsünü açabilirsiniz.
@@ -65,7 +66,8 @@ Skyrim Special Edition için geliştirilmiş, performans odaklı ve son teknoloj
 * **1. Şahıs & 3. Şahıs Kamera Desteği**: Silah parlamaları hem 3. şahıs (dünya) görünümünde hem de 1. şahıs (kamera kolları) görünümünde otomatik olarak yenilenir ve mükemmel çalışır.
 * **Akıllı Etkinlik Takibi**: Sıfır performans kaybı! Ağır per-frame (kare başı) döngüler yerine; kuşanma olaylarını (`TESEquipEvent`), kamera değişimlerini (`SKSE::CameraEvent`) ve envanter/kısayol menü kapanışlarını (`RE::MenuOpenCloseEvent`) dinleyerek parlamayı tamamen asenkron ve güvenli şekilde günceller.
 * **Arka Plan Animasyon Thread'i**: Özel bir ~30 fps arka plan thread'i parlama zamanlayıcısını ilerletir ve her adımda ana thread'e tek bir güncelleme görevi gönderir — recursive zamanlama yok, askı (hang) yok.
-* **Yay ve Kalkan Parlaması**: Yükseltilmiş yaylar ve kalkanlar da aynı animasyonlu parlama efektini alır. Glow doğru NiAV node'larına (`Bow`, `SHIELD`) uygulanarak hem birinci hem de üçüncü şahıs görünümünde mükemmel çalışır.
+* **Yay ve Kalkan Parlaması**: Yükseltilmiş yaylar ve kalkanlar da aynı animasyonlu parlama efektini alır. Glow doğru NiAV node'larına (`Bow`, `WeaponBow`, `SHIELD`) uygulanarak hem birinci hem de üçüncü şahıs görünümünde mükemmel çalışır.
+* **Takipçi / Companion Parlaması**: Yükseltilmiş silah veya kalkanı takipçinize verdiğinizde, takipçinizin elindeki eşya da parlar! Sistem her animasyon adımında yakındaki (~50 metre) tüm aktörleri tarar ve doğru seviye parlamasını uygular. **NFF (Nether's Follower Framework)** ve diğer takipçi modlarıyla tam uyumludur.
 * **SKSE Cosave Kayıt Sistemi**: Silahlarınızın seviyeleri tamamen kalıcıdır; oyunu kaydettiğinizde otomatik olarak `.ess / .cosave` kayıt dosyalarınıza yazılır ve oyunu tekrar açtığınızda sorunsuz bir şekilde yüklenir.
 * **Community Shaders Uyumluluğu**: *Community Shaders* (Metals ve Dynamic Cubemaps dahil) kurulu sistemlerde çökmeye neden olan klasik shader yapısı yerine doğrudan materyal ışıması (`BSLightingShaderProperty`) modifikasyonları kullanılarak %100 kararlılık sağlanmıştır.
 
