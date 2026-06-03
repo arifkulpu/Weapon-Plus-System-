@@ -413,14 +413,26 @@ extern "C" void __std_regex_transform_primary_char() {}
         auto* processLists = RE::ProcessLists::GetSingleton();
         if (!processLists) return;
 
+        // Cache the follower faction once per run
+        auto* dataHandler = RE::TESDataHandler::GetSingleton();
+        static RE::TESFaction* followerFaction = nullptr;
+        if (!followerFaction && dataHandler) {
+            // PlayerFollowerFaction is 0x5C84D in Skyrim.esm
+            followerFaction = RE::TESForm::LookupByID<RE::TESFaction>(0x5C84D);
+        }
+
         for (auto& handle : processLists->highActorHandles) {
             auto actor = handle.get();
             if (!actor || actor->IsPlayerRef()) continue;
             if (!actor->Is3DLoaded()) continue;
 
-            // IsPlayerTeammate() is a fast O(1) flag check — skips enemies/civilians instantly.
-            // NFF does set this flag for managed followers.
-            if (!actor->IsPlayerTeammate()) continue;
+            // Check if teammate or in follower faction
+            bool isFollower = actor->IsPlayerTeammate();
+            if (!isFollower && followerFaction) {
+                isFollower = actor->IsInFaction(followerFaction);
+            }
+
+            if (!isFollower) continue;
 
             auto* root = actor->Get3D(false);
             if (!root) continue;
@@ -495,10 +507,10 @@ extern "C" void __std_regex_transform_primary_char() {}
             }
         }
 
-        // Follower glow: throttled to run only every 60 ticks (~2 seconds at 30fps).
-        // Running it every frame on all highActorHandles is too expensive and causes hangs.
+        // Follower glow: throttled to run only every 10 ticks (~3 times a second at 30fps).
+        // Running it every frame on all highActorHandles is too expensive, but 10 ticks is a good balance.
         int throttle = followerGlowThrottle_.fetch_add(1, std::memory_order_relaxed);
-        if (throttle % 60 == 0) {
+        if (throttle % 10 == 0) {
             applyFollowerGlows(t);
         }
     }
