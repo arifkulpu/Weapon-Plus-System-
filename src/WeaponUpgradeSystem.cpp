@@ -97,14 +97,14 @@ extern "C" void __std_regex_transform_primary_char() {}
         }
 
         if (!item) {
-            RE::DebugNotification("Silahçı: Önce bir silah veya kalkan kuşanmalısın.");
+            RE::DebugNotification("Blacksmith: You must equip a weapon or shield first.");
             return;
         }
 
         int currentLevel = WeaponUpgradeData::getInstance().getLevel(itemRefId);
 
         if (currentLevel >= kMaxPlusLevel) {
-            RE::DebugNotification("Bu eşya zaten maksimum seviyeye ulaştı (+9)!");
+            RE::DebugNotification("This item has already reached maximum level (+9)!");
             return;
         }
 
@@ -119,13 +119,13 @@ extern "C" void __std_regex_transform_primary_char() {}
         menuOpen_ = true;
 
         const char* rawName = item ? item->GetName() : nullptr;
-        std::string itemName = (rawName && rawName[0]) ? rawName : "Bilinmeyen Eşya";
+        std::string itemName = (rawName && rawName[0]) ? rawName : "Unknown Item";
 
         int cost = upgradeCost(currentLevel);
         float chance = successChance(currentLevel) * 100.0f;
 
         std::string title = std::format(
-            "{} +{}\n\nYükseltme Maliyeti: {} altın\nBaşarı Şansı: {:.0f}%\n\nSeviyeyi +{} yapmak istiyor musun?",
+            "{} +{}\n\nUpgrade Cost: {} gold\nSuccess Chance: {:.0f}%\n\nDo you want to upgrade this item to +{}?",
             itemName, currentLevel, cost, chance, currentLevel + 1
         );
 
@@ -158,8 +158,8 @@ extern "C" void __std_regex_transform_primary_char() {}
         msgData->callback = std::move(callback);
 
         msgData->buttonText.clear();
-        msgData->buttonText.push_back("Yükselt");
-        msgData->buttonText.push_back("Vazgeç");
+        msgData->buttonText.push_back("Upgrade");
+        msgData->buttonText.push_back("Cancel");
 
         msgData->unk4C = 4;
         msgData->unk4D = 4;
@@ -192,7 +192,7 @@ extern "C" void __std_regex_transform_primary_char() {}
 
         float orig = originalDamage[itemRefId];
         const char* rawName = item->GetName();
-        std::string itemNameStr = (rawName && rawName[0]) ? rawName : "Eşya";
+        std::string itemNameStr = (rawName && rawName[0]) ? rawName : "Item";
 
         // Determine upgrade success
         int currentLevel = newLevel - 1;
@@ -217,9 +217,9 @@ extern "C" void __std_regex_transform_primary_char() {}
 
             std::string msg;
             if (weapon)
-                msg = std::format("{} +{} seviyesine yükseltildi! (+{} hasar)", itemNameStr, newLevel, newLevel);
+                msg = std::format("{} upgraded to +{}! (+{} damage)", itemNameStr, newLevel, newLevel);
             else
-                msg = std::format("{} +{} seviyesine yükseltildi!", itemNameStr, newLevel);
+                msg = std::format("{} upgraded to +{}!", itemNameStr, newLevel);
             RE::DebugNotification(msg.c_str());
         } else {
             int failedLevel = currentLevel;
@@ -238,9 +238,9 @@ extern "C" void __std_regex_transform_primary_char() {}
 
             std::string msg;
             if (nextLevel < failedLevel)
-                msg = std::format("{} yükseltmesi başarısız oldu! Seviye +{} değerine düştü.", itemNameStr, nextLevel);
+                msg = std::format("{} upgrade failed! Level decreased to +{}.", itemNameStr, nextLevel);
             else
-                msg = std::format("{} yükseltmesi başarısız oldu!", itemNameStr);
+                msg = std::format("{} upgrade failed!", itemNameStr);
             RE::DebugNotification(msg.c_str());
         }
 
@@ -566,13 +566,11 @@ extern "C" void __std_regex_transform_primary_char() {}
                 float t = glowTime_.load(std::memory_order_relaxed) + dt;
                 glowTime_.store(t, std::memory_order_relaxed);
 
-                // Only animate when there is something to animate
-                if (lastLevelR_.load(std::memory_order_relaxed) > 0 ||
-                    lastLevelL_.load(std::memory_order_relaxed) > 0) {
-                    SKSE::GetTaskInterface()->AddTask([this]() {
-                        updateGlowAnimation();
-                    });
-                }
+                // Glow animation loop runs if glow is enabled. Inside updateGlowAnimation(),
+                // we check both player levels and highActorHandles levels.
+                SKSE::GetTaskInterface()->AddTask([this]() {
+                    updateGlowAnimation();
+                });
 
                 std::this_thread::sleep_for(std::chrono::milliseconds(33)); // ~30 fps
             }
@@ -754,7 +752,7 @@ extern "C" void __std_regex_transform_primary_char() {}
             }
 
             if (goldCount < cost) {
-                std::string msg = std::format("Yeterli altın yok! Gerekli: {} altın (Sahip olduğun: {})", cost, goldCount);
+                std::string msg = std::format("Not enough gold! Required: {} gold (You have: {})", cost, goldCount);
                 RE::DebugNotification(msg.c_str());
                 return;
             }
