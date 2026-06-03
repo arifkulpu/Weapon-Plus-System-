@@ -102,6 +102,9 @@ namespace plugin {
         // Time accumulator (seconds) — written by background thread, read by main thread via AddTask
         std::atomic<float> glowTime_{ 0.0f };
 
+        // Throttle counter: follower glows are expensive, only refresh every N ticks
+        std::atomic<int> followerGlowThrottle_{ 0 };
+
         void setGlowEnabled(bool enabled) { glowEnabled_ = enabled; }
     };
 

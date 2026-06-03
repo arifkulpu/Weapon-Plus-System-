@@ -393,60 +393,43 @@ extern "C" void __std_regex_transform_primary_char() {}
     void WeaponUpgradeSystem::applyFollowerGlows(float t) {
         auto& data = WeaponUpgradeData::getInstance();
 
-        auto* player = RE::PlayerCharacter::GetSingleton();
-        if (!player) return;
-
-        RE::NiPoint3 playerPos = player->GetPosition();
-
-        // Helper: apply glow to a weapon node — tries several possible names
-        // because NPC skeletons sometimes use different node names than the player.
+        // Helper: try common right-hand weapon node names used by humanoid NPC skeletons.
         auto glowWeaponNodes = [&](RE::NiAVObject* root, int level) {
             if (!root) return;
-            // Right-hand weapon / bow nodes
-            static const char* rightNodes[] = { "WEAPON", "Bow", "WeaponBow", "WeaponSword",
-                                                "WeaponDagger", "WeaponAxe", "WeaponMace", nullptr };
-            for (int i = 0; rightNodes[i]; ++i) {
-                auto* n = root->GetObjectByName(rightNodes[i]);
+            for (const char* name : { "WEAPON", "Bow", "WeaponBow" }) {
+                auto* n = root->GetObjectByName(name);
                 if (n) applyEffectGlow(n, level, t);
             }
         };
 
         auto glowShieldNodes = [&](RE::NiAVObject* root, int level) {
             if (!root) return;
-            static const char* leftNodes[] = { "WEAPONL", "SHIELD", "WeaponShield", nullptr };
-            for (int i = 0; leftNodes[i]; ++i) {
-                auto* n = root->GetObjectByName(leftNodes[i]);
+            for (const char* name : { "WEAPONL", "SHIELD" }) {
+                auto* n = root->GetObjectByName(name);
                 if (n) applyEffectGlow(n, level, t);
             }
         };
 
-        // Walk every loaded actor reference in the current cell(s)
-        auto processHandle = [&](RE::ActorHandle handle) {
+        auto* processLists = RE::ProcessLists::GetSingleton();
+        if (!processLists) return;
+
+        for (auto& handle : processLists->highActorHandles) {
             auto actor = handle.get();
-            if (!actor || actor->IsPlayerRef()) return;
-            if (!actor->Is3DLoaded()) return;
+            if (!actor || actor->IsPlayerRef()) continue;
+            if (!actor->Is3DLoaded()) continue;
 
-            // Distance filter — only process actors within ~50m (3000 units).
-            // This replaces IsPlayerTeammate() which NFF may not set reliably.
-            RE::NiPoint3 actorPos = actor->GetPosition();
-            float dx = actorPos.x - playerPos.x;
-            float dy = actorPos.y - playerPos.y;
-            float dz = actorPos.z - playerPos.z;
-            float distSq = dx * dx + dy * dy + dz * dz;
-            if (distSq > 3000.0f * 3000.0f) return;
+            // IsPlayerTeammate() is a fast O(1) flag check — skips enemies/civilians instantly.
+            // NFF does set this flag for managed followers.
+            if (!actor->IsPlayerTeammate()) continue;
 
-            // Only care about actors that have at least one upgraded item equipped.
-            // NPCs only have a single third-person root (Get3D(false)).
             auto* root = actor->Get3D(false);
-            if (!root) return;
+            if (!root) continue;
 
             // Right hand
             auto* equippedR = actor->GetEquippedObject(false);
             if (equippedR) {
                 int lvR = data.getLevel(equippedR->GetFormID());
-                if (lvR > 0) {
-                    glowWeaponNodes(root, lvR);
-                }
+                if (lvR > 0) glowWeaponNodes(root, lvR);
             }
 
             // Left hand (weapon or shield)
@@ -457,23 +440,12 @@ extern "C" void __std_regex_transform_primary_char() {}
                 auto* sL = equippedL->As<RE::TESObjectARMO>();
                 if (wL) idL = wL->GetFormID();
                 else if (sL && sL->IsShield()) idL = sL->GetFormID();
-
                 if (idL > 0) {
                     int lvL = data.getLevel(idL);
-                    if (lvL > 0) {
-                        glowShieldNodes(root, lvL);
-                    }
+                    if (lvL > 0) glowShieldNodes(root, lvL);
                 }
             }
-        };
-
-        // Iterate all actor handles in the high-process list (loaded actors)
-        auto* processLists = RE::ProcessLists::GetSingleton();
-        if (!processLists) return;
-        for (auto& handle : processLists->highActorHandles) {
-            processHandle(handle);
         }
-
     }
 
     // -----------------------------------------------------------------------
@@ -523,8 +495,12 @@ extern "C" void __std_regex_transform_primary_char() {}
             }
         }
 
-        // Follower glow
-        applyFollowerGlows(t);
+        // Follower glow: throttled to run only every 60 ticks (~2 seconds at 30fps).
+        // Running it every frame on all highActorHandles is too expensive and causes hangs.
+        int throttle = followerGlowThrottle_.fetch_add(1, std::memory_order_relaxed);
+        if (throttle % 60 == 0) {
+            applyFollowerGlows(t);
+        }
     }
 
     void WeaponUpgradeSystem::startGlowLoop() {
