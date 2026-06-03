@@ -86,6 +86,7 @@ namespace plugin {
         // Apply BSEffectShaderData glow to all geometry under a node
         void applyEffectGlow(RE::NiAVObject* node, int level, float t, int depth = 0);
         void clearEffectGlow(RE::NiAVObject* node, int depth = 0);
+        void applyFollowerGlows(float t);
         void printNodeHierarchy(RE::NiAVObject* node, int indent = 0);
 
         bool menuOpen_ = false;

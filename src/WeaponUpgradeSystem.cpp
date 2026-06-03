@@ -386,6 +386,73 @@ extern "C" void __std_regex_transform_primary_char() {}
     }
 
     // -----------------------------------------------------------------------
+    // Follower glow — scan all nearby actors and apply glow to their equipped
+    // upgraded items exactly like we do for the player.
+    // -----------------------------------------------------------------------
+
+    void WeaponUpgradeSystem::applyFollowerGlows(float t) {
+        auto& data = WeaponUpgradeData::getInstance();
+
+        // Walk every loaded actor reference in the current cell(s)
+        auto processHandle = [&](RE::ActorHandle handle) {
+            auto actor = handle.get();
+            if (!actor || actor->IsPlayerRef()) return;
+            if (!actor->Is3DLoaded()) return;
+
+            // Only process followers (teammates) — skip enemies / civilians
+            if (!actor->IsPlayerTeammate()) return;
+
+            // Right hand
+            auto* equippedR = actor->GetEquippedObject(false);
+            if (equippedR) {
+                RE::FormID idR = equippedR->GetFormID();
+                int lvR = data.getLevel(idR);
+                if (lvR > 0) {
+                    for (bool firstPerson : { false, true }) {
+                        auto* root = actor->Get3D(firstPerson);
+                        if (!root) continue;
+                        auto* n = root->GetObjectByName("WEAPON");
+                        if (n) applyEffectGlow(n, lvR, t);
+                        auto* b = root->GetObjectByName("Bow");
+                        if (b) applyEffectGlow(b, lvR, t);
+                    }
+                }
+            }
+
+            // Left hand (weapon or shield)
+            auto* equippedL = actor->GetEquippedObject(true);
+            if (equippedL) {
+                RE::FormID idL = 0;
+                auto* wL = equippedL->As<RE::TESObjectWEAP>();
+                auto* sL = equippedL->As<RE::TESObjectARMO>();
+                if (wL) idL = wL->GetFormID();
+                else if (sL && sL->IsShield()) idL = sL->GetFormID();
+
+                if (idL > 0) {
+                    int lvL = data.getLevel(idL);
+                    if (lvL > 0) {
+                        for (bool firstPerson : { false, true }) {
+                            auto* root = actor->Get3D(firstPerson);
+                            if (!root) continue;
+                            auto* n = root->GetObjectByName("WEAPONL");
+                            if (n) applyEffectGlow(n, lvL, t);
+                            auto* s = root->GetObjectByName("SHIELD");
+                            if (s) applyEffectGlow(s, lvL, t);
+                        }
+                    }
+                }
+            }
+        };
+
+        // Iterate all actor handles in the high-process list (loaded actors)
+        auto* processLists = RE::ProcessLists::GetSingleton();
+        if (!processLists) return;
+        for (auto& handle : processLists->highActorHandles) {
+            processHandle(handle);
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Glow animation — background thread drives time, main thread paints
     // -----------------------------------------------------------------------
 
@@ -411,10 +478,10 @@ extern "C" void __std_regex_transform_primary_char() {}
 
         int lvR = lastLevelR_.load(std::memory_order_relaxed);
         int lvL = lastLevelL_.load(std::memory_order_relaxed);
-        if (lvR == 0 && lvL == 0) return;  // nothing upgraded
 
         float t = glowTime_.load(std::memory_order_relaxed);
 
+        // Player glow
         std::array<RE::NiAVObject*, 2> roots = { player->Get3D(false), player->Get3D(true) };
         for (auto* root : roots) {
             if (!root) continue;
@@ -431,6 +498,9 @@ extern "C" void __std_regex_transform_primary_char() {}
                 if (s) applyEffectGlow(s, lvL, t);
             }
         }
+
+        // Follower glow
+        applyFollowerGlows(t);
     }
 
     void WeaponUpgradeSystem::startGlowLoop() {
@@ -593,7 +663,12 @@ extern "C" void __std_regex_transform_primary_char() {}
             auto equippedL = player->GetEquippedObject(true);
             if (equippedL) {
                 auto* w = equippedL->As<RE::TESObjectWEAP>();
-                if (w) weaponRefIdL = w->GetFormID();
+                if (w) {
+                    weaponRefIdL = w->GetFormID();
+                } else {
+                    auto* s = equippedL->As<RE::TESObjectARMO>();
+                    if (s && s->IsShield()) weaponRefIdL = s->GetFormID();
+                }
             }
         } catch (...) { logger::error("Exception reading left-hand in refreshGlow"); }
 
