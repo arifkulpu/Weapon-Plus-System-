@@ -393,29 +393,59 @@ extern "C" void __std_regex_transform_primary_char() {}
     void WeaponUpgradeSystem::applyFollowerGlows(float t) {
         auto& data = WeaponUpgradeData::getInstance();
 
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        if (!player) return;
+
+        RE::NiPoint3 playerPos = player->GetPosition();
+
+        // Helper: apply glow to a weapon node — tries several possible names
+        // because NPC skeletons sometimes use different node names than the player.
+        auto glowWeaponNodes = [&](RE::NiAVObject* root, int level) {
+            if (!root) return;
+            // Right-hand weapon / bow nodes
+            static const char* rightNodes[] = { "WEAPON", "Bow", "WeaponBow", "WeaponSword",
+                                                "WeaponDagger", "WeaponAxe", "WeaponMace", nullptr };
+            for (int i = 0; rightNodes[i]; ++i) {
+                auto* n = root->GetObjectByName(rightNodes[i]);
+                if (n) applyEffectGlow(n, level, t);
+            }
+        };
+
+        auto glowShieldNodes = [&](RE::NiAVObject* root, int level) {
+            if (!root) return;
+            static const char* leftNodes[] = { "WEAPONL", "SHIELD", "WeaponShield", nullptr };
+            for (int i = 0; leftNodes[i]; ++i) {
+                auto* n = root->GetObjectByName(leftNodes[i]);
+                if (n) applyEffectGlow(n, level, t);
+            }
+        };
+
         // Walk every loaded actor reference in the current cell(s)
         auto processHandle = [&](RE::ActorHandle handle) {
             auto actor = handle.get();
             if (!actor || actor->IsPlayerRef()) return;
             if (!actor->Is3DLoaded()) return;
 
-            // Only process followers (teammates) — skip enemies / civilians
-            if (!actor->IsPlayerTeammate()) return;
+            // Distance filter — only process actors within ~50m (3000 units).
+            // This replaces IsPlayerTeammate() which NFF may not set reliably.
+            RE::NiPoint3 actorPos = actor->GetPosition();
+            float dx = actorPos.x - playerPos.x;
+            float dy = actorPos.y - playerPos.y;
+            float dz = actorPos.z - playerPos.z;
+            float distSq = dx * dx + dy * dy + dz * dz;
+            if (distSq > 3000.0f * 3000.0f) return;
+
+            // Only care about actors that have at least one upgraded item equipped.
+            // NPCs only have a single third-person root (Get3D(false)).
+            auto* root = actor->Get3D(false);
+            if (!root) return;
 
             // Right hand
             auto* equippedR = actor->GetEquippedObject(false);
             if (equippedR) {
-                RE::FormID idR = equippedR->GetFormID();
-                int lvR = data.getLevel(idR);
+                int lvR = data.getLevel(equippedR->GetFormID());
                 if (lvR > 0) {
-                    for (bool firstPerson : { false, true }) {
-                        auto* root = actor->Get3D(firstPerson);
-                        if (!root) continue;
-                        auto* n = root->GetObjectByName("WEAPON");
-                        if (n) applyEffectGlow(n, lvR, t);
-                        auto* b = root->GetObjectByName("Bow");
-                        if (b) applyEffectGlow(b, lvR, t);
-                    }
+                    glowWeaponNodes(root, lvR);
                 }
             }
 
@@ -431,14 +461,7 @@ extern "C" void __std_regex_transform_primary_char() {}
                 if (idL > 0) {
                     int lvL = data.getLevel(idL);
                     if (lvL > 0) {
-                        for (bool firstPerson : { false, true }) {
-                            auto* root = actor->Get3D(firstPerson);
-                            if (!root) continue;
-                            auto* n = root->GetObjectByName("WEAPONL");
-                            if (n) applyEffectGlow(n, lvL, t);
-                            auto* s = root->GetObjectByName("SHIELD");
-                            if (s) applyEffectGlow(s, lvL, t);
-                        }
+                        glowShieldNodes(root, lvL);
                     }
                 }
             }
@@ -450,6 +473,7 @@ extern "C" void __std_regex_transform_primary_char() {}
         for (auto& handle : processLists->highActorHandles) {
             processHandle(handle);
         }
+
     }
 
     // -----------------------------------------------------------------------
