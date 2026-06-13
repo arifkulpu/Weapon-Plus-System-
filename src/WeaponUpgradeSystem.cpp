@@ -104,8 +104,10 @@ extern "C" void __std_regex_transform_primary_char() {}
 
         int currentLevel = WeaponUpgradeData::getInstance().getLevel(itemRefId);
 
-        if (currentLevel >= kMaxPlusLevel) {
-            RE::DebugNotification("This item has already reached maximum level (+9)!");
+        int maxLvl = Config::getInstance().maxUpgradeLevel;
+        if (currentLevel >= maxLvl) {
+            std::string msg = std::format("This item has already reached maximum level (+{})!", maxLvl);
+            RE::DebugNotification(msg.c_str());
             return;
         }
 
@@ -575,7 +577,7 @@ extern "C" void __std_regex_transform_primary_char() {}
     }
 
     void WeaponUpgradeSystem::startGlowLoop() {
-        glowEnabled_ = true;
+        glowEnabled_ = Config::getInstance().enableGlow;
         animRunning_ = true;
         glowTime_.store(0.0f);
 

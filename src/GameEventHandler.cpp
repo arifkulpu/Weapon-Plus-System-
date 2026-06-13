@@ -3,10 +3,15 @@
 #include "InputHandler.h"
 #include "Serialization.h"
 #include "WeaponUpgradeSystem.h"
+#include "Config.h"
 
 namespace plugin {
     void GameEventHandler::onLoad() {
         logger::info("onLoad()");
+        
+        // Load INI configurations
+        Config::getInstance().load();
+
         Hooks::install();
 
         // Register SKSE cosave serialization

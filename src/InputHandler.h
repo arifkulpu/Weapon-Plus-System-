@@ -1,4 +1,5 @@
 #pragma once
+#include "Config.h"
 #include "WeaponUpgradeSystem.h"
 
 namespace plugin {
@@ -7,7 +8,7 @@ namespace plugin {
      * InputHandler
      *
      * Registers as a BSInputDeviceManager event sink to intercept
-     * keyboard presses. On 'L' (DIK_L = 0x26), calls WeaponUpgradeSystem.
+     * keyboard presses. On dynamic Configured key, calls WeaponUpgradeSystem.
      */
     class InputHandler : public RE::BSTEventSink<RE::InputEvent*> {
     public:
@@ -41,14 +42,13 @@ namespace plugin {
                 // Only trigger on key-down (not held, not released)
                 if (!btnEvent->IsDown()) continue;
 
-                // DIK_L = 0x26 (DirectInput keyboard scan code for 'L')
-                constexpr uint32_t DIK_L = 0x26;
+                uint32_t targetKey = Config::getInstance().upgradeKey;
 
-                if (btnEvent->GetIDCode() == DIK_L &&
+                if (btnEvent->GetIDCode() == targetKey &&
                     btnEvent->GetDevice() == RE::INPUT_DEVICE::kKeyboard) {
 
                     // Dispatch on game thread to safely access game state
-                    SKSE::log::info("K key pressed - triggering weapon upgrade check");
+                    SKSE::log::info("Upgrade key pressed - triggering weapon upgrade check");
                     SKSE::GetTaskInterface()->AddTask([]() {
                         WeaponUpgradeSystem::getInstance().onKeyPressed();
                     });

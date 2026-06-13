@@ -1,23 +1,22 @@
 #pragma once
 
+#include "Config.h"
+
 namespace plugin {
 
-    // Max upgrade level
-    inline constexpr int kMaxPlusLevel = 9;
-
-    // Gold cost per level: level 1 costs 100, level 2 costs 200, ..., level N costs N*100
+    // Gold cost per level: level 1 costs (0+1)*multiplier, level 2 costs (1+1)*multiplier...
     inline int upgradeCost(int currentLevel) {
-        return (currentLevel + 1) * 100;
+        return (currentLevel + 1) * Config::getInstance().goldCostMultiplier;
     }
 
-    // Success chance for upgrading from currentLevel to currentLevel + 1:
-    // currentLevel 0 (+1 attempt) = 100% (1.0f)
-    // currentLevel 8 (+9 attempt) = 25% (0.25f)
+    // Success chance for upgrading from currentLevel to currentLevel + 1
     inline float successChance(int currentLevel) {
-        if (currentLevel <= 0) return 1.0f;
-        if (currentLevel >= 8) return 0.25f;
-        // Linear step: 100% to 25% over 8 steps -> 75% total span -> 9.375% per level reduction
-        return 1.00f - (currentLevel * 0.09375f);
+        auto& config = Config::getInstance();
+        if (currentLevel < 0) return 1.0f;
+        if (currentLevel >= static_cast<int>(config.successChances.size())) {
+            return config.successChances.empty() ? 0.25f : config.successChances.back();
+        }
+        return config.successChances[currentLevel];
     }
 
 
@@ -50,7 +49,7 @@ namespace plugin {
         // Increment level (returns false if already at max)
         bool incrementLevel(RE::FormID refId) {
             int lvl = getLevel(refId);
-            if (lvl >= kMaxPlusLevel) return false;
+            if (lvl >= Config::getInstance().maxUpgradeLevel) return false;
             upgradeMap_[refId] = lvl + 1;
             return true;
         }
