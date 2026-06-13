@@ -348,18 +348,14 @@ extern "C" void __std_regex_transform_primary_char() {}
     // -----------------------------------------------------------------------
 
     static std::tuple<float, float, float, float> glowColorForLevel(int level) {
-        switch (level) {
-            case 1:  return {1.0f, 1.0f,  1.0f,  1.2f};
-            case 2:  return {0.6f, 0.85f, 1.0f,  2.0f};
-            case 3:  return {0.1f, 0.4f,  1.0f,  2.8f};
-            case 4:  return {0.0f, 0.9f,  0.9f,  3.5f};
-            case 5:  return {0.1f, 1.0f,  0.3f,  4.0f};
-            case 6:  return {1.0f, 1.0f,  0.0f,  4.8f};
-            case 7:  return {1.0f, 0.5f,  0.0f,  5.5f};
-            case 8:  return {1.0f, 0.15f, 0.0f,  6.5f};
-            case 9:  return {1.0f, 0.0f,  0.0f,  8.0f};
-            default: return {1.0f, 1.0f,  1.0f,  1.0f};
+        auto& config = Config::getInstance();
+        if (level <= 0) return {1.0f, 1.0f, 1.0f, 1.0f};
+        
+        int index = level - 1;
+        if (index >= static_cast<int>(config.glowColors.size())) {
+            return config.glowColors.empty() ? std::make_tuple(1.0f, 1.0f, 1.0f, 1.0f) : config.glowColors.back();
         }
+        return config.glowColors[index];
     }
 
     static float pulseFrequency(int level) {

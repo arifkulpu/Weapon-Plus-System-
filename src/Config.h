@@ -39,6 +39,19 @@ namespace plugin {
             0.25f   // +9 (currentLevel 8)
         };
 
+        // Glow colors for levels 1 to 9 (tuple: Red, Green, Blue, Multiplier)
+        std::vector<std::tuple<float, float, float, float>> glowColors = {
+            {1.0f, 1.0f,  1.0f,  1.2f}, // +1
+            {0.6f, 0.85f, 1.0f,  2.0f}, // +2
+            {0.1f, 0.4f,  1.0f,  2.8f}, // +3
+            {0.0f, 0.9f,  0.9f,  3.5f}, // +4
+            {0.1f, 1.0f,  0.3f,  4.0f}, // +5
+            {1.0f, 1.0f,  0.0f,  4.8f}, // +6
+            {1.0f, 0.5f,  0.0f,  5.5f}, // +7
+            {1.0f, 0.15f, 0.0f,  6.5f}, // +8
+            {1.0f, 0.0f,  0.0f,  8.0f}  // +9
+        };
+
         void load() {
             std::filesystem::path iniPath = "Data/SKSE/Plugins/WeaponPlusSystem.ini";
             
@@ -84,11 +97,33 @@ namespace plugin {
                     try {
                         int index = std::stoi(key.substr(11));
                         float chance = std::stof(value);
-                        if (index >= 0 && index < 10) {
+                        if (index >= 0 && index < 20) {
                             if (index >= static_cast<int>(successChances.size())) {
                                 successChances.resize(index + 1, 0.25f);
                             }
                             successChances[index] = chance;
+                        }
+                    } catch (...) {}
+                } else if (key.rfind("GlowColor", 0) == 0) { // starts with GlowColor[Level]
+                    // Format: GlowColor[Level] = R,G,B,Mult
+                    try {
+                        int level = std::stoi(key.substr(9));
+                        if (level >= 1 && level < 20) {
+                            int index = level - 1;
+                            if (index >= static_cast<int>(glowColors.size())) {
+                                glowColors.resize(index + 1, {1.0f, 1.0f, 1.0f, 1.0f});
+                            }
+                            
+                            std::stringstream ss(value);
+                            std::string token;
+                            float r = 1.0f, g = 1.0f, b = 1.0f, mult = 1.0f;
+                            
+                            if (std::getline(ss, token, ',')) r = std::stof(token);
+                            if (std::getline(ss, token, ',')) g = std::stof(token);
+                            if (std::getline(ss, token, ',')) b = std::stof(token);
+                            if (std::getline(ss, token, ',')) mult = std::stof(token);
+                            
+                            glowColors[index] = {r, g, b, mult};
                         }
                     } catch (...) {}
                 }
@@ -115,6 +150,7 @@ namespace plugin {
             file << "GoldCostMultiplier = 100\n\n";
             file << "; Maximum level a weapon/shield can be upgraded to (Default: 9)\n";
             file << "MaxUpgradeLevel = 9\n\n";
+            
             file << "[SuccessChances]\n";
             file << "; Probability rates between 0.0 (0%) and 1.0 (100%)\n";
             file << "ChanceLevel0 = 1.00   ; Attempting +1\n";
@@ -125,7 +161,19 @@ namespace plugin {
             file << "ChanceLevel5 = 0.50   ; Attempting +6\n";
             file << "ChanceLevel6 = 0.40   ; Attempting +7\n";
             file << "ChanceLevel7 = 0.30   ; Attempting +8\n";
-            file << "ChanceLevel8 = 0.25   ; Attempting +9\n";
+            file << "ChanceLevel8 = 0.25   ; Attempting +9\n\n";
+
+            file << "[GlowColors]\n";
+            file << "; Custom glowing colors for weapon level. Format: R,G,B,Multiplier (values 0.0 to 1.0 for RGB)\n";
+            file << "GlowColor1 = 1.0, 1.0, 1.0, 1.2   ; White (+1)\n";
+            file << "GlowColor2 = 0.6, 0.85, 1.0, 2.0  ; Light Blue (+2)\n";
+            file << "GlowColor3 = 0.1, 0.4, 1.0, 2.8   ; Deep Blue (+3)\n";
+            file << "GlowColor4 = 0.0, 0.9, 0.9, 3.5   ; Cyan (+4)\n";
+            file << "GlowColor5 = 0.1, 1.0, 0.3, 4.0   ; Green (+5)\n";
+            file << "GlowColor6 = 1.0, 1.0, 0.0, 4.8   ; Yellow (+6)\n";
+            file << "GlowColor7 = 1.0, 0.5, 0.0, 5.5   ; Orange (+7)\n";
+            file << "GlowColor8 = 1.0, 0.15, 0.0, 6.5  ; Red-Orange (+8)\n";
+            file << "GlowColor9 = 1.0, 0.0, 0.0, 8.0   ; Deep Red (+9)\n";
 
             SKSE::log::info("Generated default Config at: {}", path.string());
         }
