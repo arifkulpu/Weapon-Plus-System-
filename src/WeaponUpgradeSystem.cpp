@@ -225,7 +225,7 @@ extern "C" void __std_regex_transform_primary_char() {}
                     for (auto* entry : *changes->entryList) {
                         if (entry && entry->object == item && entry->extraLists) {
                             for (auto* xList : *entry->extraLists) {
-                                if (xList) {
+                                if (xList && xList->HasType(RE::ExtraDataType::kWorn)) { // Target only equipped instance
                                     auto* xHealth = xList->GetByType<RE::ExtraHealth>();
                                     if (xHealth) {
                                         xHealth->health = healthFactor;
@@ -275,7 +275,7 @@ extern "C" void __std_regex_transform_primary_char() {}
                     for (auto* entry : *changes->entryList) {
                         if (entry && entry->object == item && entry->extraLists) {
                             for (auto* xList : *entry->extraLists) {
-                                if (xList) {
+                                if (xList && xList->HasType(RE::ExtraDataType::kWorn)) { // Target only equipped instance
                                     auto* xHealth = xList->GetByType<RE::ExtraHealth>();
                                     if (xHealth) {
                                         xHealth->health = healthFactor;
@@ -328,17 +328,17 @@ extern "C" void __std_regex_transform_primary_char() {}
             if (!entry->extraLists) continue;
 
             for (auto& xList : *entry->extraLists) {
-                if (!xList) continue;
-
-                // Update (or create) ExtraTextDisplayData on every instance
-                auto* xText = xList->GetByType<RE::ExtraTextDisplayData>();
-                if (!xText) {
-                    xText = new RE::ExtraTextDisplayData(newName.c_str());
-                    xList->Add(xText);
-                } else {
-                    xText->SetName(newName.c_str());
+                if (xList && xList->HasType(RE::ExtraDataType::kWorn)) { // Only rename equipped item
+                    // Update (or create) ExtraTextDisplayData on the equipped instance
+                    auto* xText = xList->GetByType<RE::ExtraTextDisplayData>();
+                    if (!xText) {
+                        xText = new RE::ExtraTextDisplayData(newName.c_str());
+                        xList->Add(xText);
+                    } else {
+                        xText->SetName(newName.c_str());
+                    }
+                    SKSE::log::info("Set display name '{}' on equipped weapon instance.", newName);
                 }
-                SKSE::log::info("Set display name '{}' on weapon instance.", newName);
             }
         }
     }
