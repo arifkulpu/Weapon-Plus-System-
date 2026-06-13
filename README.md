@@ -29,14 +29,25 @@ A premium, performance-optimized **Skyrim Special Edition (v1.6.1170)** SKSE C++
 * **Smart UI & Camera Event Tracking**: Zero performance overhead! The plugin is fully event-driven, listening directly to `TESEquipEvent`, `SKSE::CameraEvent` (1st/3rd person switches), and `RE::MenuOpenCloseEvent` (when closing inventory/favorites/crafting menus) to safely re-apply glows asynchronously without heavy frame loops.
 * **Background Animation Thread**: A dedicated ~30 fps background thread advances the glow timer and dispatches a single update task to the main thread each tick — no recursive scheduling, no hangs.
 * **Bow & Shield Glow Support**: Upgraded bows and shields also receive the full animated glow treatment — the glow is applied to the correct NiAV nodes (`Bow`, `WeaponBow`, `SHIELD`) in both first- and third-person views.
-* **Companion / Follower Glow Support**: Give an upgraded weapon or shield to your companion and they will also glow! The system scans all nearby actors within ~50 metres every animation tick and applies the correct tier glow to their equipped items. Fully compatible with **NFF (Nether's Follower Framework)** and other follower mods.
-* **SKSE Cosave Serialization**: Upgrade levels are fully persistent and cleanly saved and loaded inside your standard Skyrim save files.
+* **Companion / Follower Glow Support**: Give an upgraded weapon or shield to your companion and they will also glow! The system scans all nearby actors within ~50 metres every animation tick and applies the correct tier glow to their equipped items. Fully compatible with **NFF (Nether's Follower Framework)** and oth* **SKSE Cosave Serialization**: Upgrade levels are fully persistent and cleanly saved and loaded inside your standard Skyrim save files.
 * **Community Shaders Compatibility**: Built with custom direct material emittance overrides that bypass the standard BSEffectShader data structure, ensuring 100% crash-free stability when running *Community Shaders* (including Metals and Dynamic Cubemaps).
+
+### Changelog
+
+#### [NEW] Version 1.0.3
+* **INI Configuration File Support**: Adds a fully customizable `WeaponPlusSystem.ini` config file automatically generated inside `Data/SKSE/Plugins/`. Users can now customize:
+  * Key bindings (`UpgradeKey`) using DirectInput Hex codes (Default: `0x26` for **L**).
+  * Toggle glow effects (`EnableGlow`).
+  * Price scale parameters (`GoldCostMultiplier`).
+  * Maximum upgrade bounds (`MaxUpgradeLevel`).
+  * Dynamic success probabilities per attempt (`ChanceLevel0` to `ChanceLevel8`).
+* **Individual Weapon Upgrades (Tempering/ExtraHealth)**: Upgrading no longer increases base item stats globally. The plugin now uses Skyrim's internal `ExtraHealth` (tempering) data structure to store and scale item stats, modifying **only** the unique weapon instance upgraded.
+* **Multi-Version Independent DLL**: Build features updated via CommonLibSSE-NG to support a single independent DLL compatible with Skyrim Special Edition **(v1.5.97)**, Anniversary Edition **(v1.6.1170)**, and **Skyrim VR**.
 
 ### How to Use
 1. Equip the weapon or shield you want to upgrade.
 2. Approach any blacksmith NPC and point your crosshair at them.
-3. Press **L** to open the upgrade menu.
+3. Press **L** (or your custom configured key in the INI file) to open the upgrade menu.
 4. If you have enough gold, check the success chance and confirm the upgrade!
 5. **Remember to save your game (F5 or manual save) after upgrading so your weapon upgrades persist!**
 
@@ -71,10 +82,22 @@ Skyrim Special Edition için geliştirilmiş, performans odaklı ve son teknoloj
 * **SKSE Cosave Kayıt Sistemi**: Silahlarınızın seviyeleri tamamen kalıcıdır; oyunu kaydettiğinizde otomatik olarak `.ess / .cosave` kayıt dosyalarınıza yazılır ve oyunu tekrar açtığınızda sorunsuz bir şekilde yüklenir.
 * **Community Shaders Uyumluluğu**: *Community Shaders* (Metals ve Dynamic Cubemaps dahil) kurulu sistemlerde çökmeye neden olan klasik shader yapısı yerine doğrudan materyal ışıması (`BSLightingShaderProperty`) modifikasyonları kullanılarak %100 kararlılık sağlanmıştır.
 
+### Güncelleme Geçmişi
+
+#### [YENİ] Sürüm 1.0.3
+* **INI Yapılandırma Dosyası Desteği**: Eklenti ilk kez çalıştığında `Data/SKSE/Plugins/` altında otomatik olarak `WeaponPlusSystem.ini` ayar dosyasını oluşturur. Buradan şu ayarları düzenleyebilirsiniz:
+  * Yükseltme açma tuşu (`UpgradeKey`) DirectInput Hex değerleri ile (Örn: L için `0x26`).
+  * Parlama efekti kontrolü (`EnableGlow`).
+  * Fiyat çarpanı (`GoldCostMultiplier`).
+  * Maksimum geliştirme sınırı (`MaxUpgradeLevel`).
+  * Seviyelere özel dinamik şans oranları (`ChanceLevel0` ile `ChanceLevel8` arası).
+* **Bireysel Silah Yükseltme (Tempering/ExtraHealth)**: Silah hasarını artık base (ortak) form üzerinden değil, Skyrim'in kendi bileme (tempering) yapısını taklit ederek benzersiz envanter kopyası (`ExtraHealth`) üzerinden artırır. Böylelikle yükseltilen kılıç sadece size özel olur, dünyadaki diğer kopyaların hasarı artmaz.
+* **Çoklu Sürüm Uyumlu Tek DLL**: CommonLibSSE-NG altyapısıyla derleme özellikleri güncellenerek; Skyrim Special Edition **(v1.5.97)**, Anniversary Edition **(v1.6.1170)** ve **Skyrim VR** üzerinde tek bir DLL dosyasının çalışabilmesi sağlanmıştır.
+
 ### Nasıl Kullanılır?
 1. Yükseltmek istediğiniz silahı veya kalkanı elinize kuşanın.
 2. Herhangi bir demirci NPC'ye yaklaşın ve hedef göstergenizi ona doğrultun.
-3. **L** tuşuna basarak yükseltme ekranını açın.
+3. **L** tuşuna (veya INI dosyasında belirlediğiniz özel tuşa) basarak yükseltme ekranını açın.
 4. Yeterli altınınız varsa başarı şansını kontrol edip yükseltmeyi onaylayın!
 5. **Silahınızı yükselttikten sonra oyunu kaydetmeyi (F5 veya normal kayıt) unutmayın; böylece yükseltmeleriniz kalıcı olarak kaydedilecektir!**
 
