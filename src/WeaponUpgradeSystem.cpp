@@ -202,9 +202,12 @@ extern "C" void __std_regex_transform_primary_char() {}
         bool success = roll <= chance;
 
         if (success) {
-            // Apply flat damage bonus (only meaningful for weapons)
+            // Apply cumulative damage bonus (only meaningful for weapons)
+            // +1 -> +1 dmg, +2 -> +3 dmg, +3 -> +6 dmg, +4 -> +10 dmg ...
+            // Formula: Sum of integers from 1 to newLevel = (newLevel * (newLevel + 1)) / 2
             if (weapon) {
-                float newDmg = orig + static_cast<float>(newLevel);
+                int totalBonus = (newLevel * (newLevel + 1)) / 2;
+                float newDmg = orig + static_cast<float>(totalBonus);
                 weapon->attackDamage = static_cast<uint16_t>(std::round(newDmg));
                 logger::info("Item '{}' upgraded SUCCESS to +{}. Damage: {} -> {}",
                     itemNameStr, newLevel, static_cast<int>(orig), weapon->attackDamage);
@@ -216,17 +219,23 @@ extern "C" void __std_regex_transform_primary_char() {}
             WeaponUpgradeData::getInstance().setLevel(itemRefId, newLevel);
 
             std::string msg;
-            if (weapon)
-                msg = std::format("{} upgraded to +{}! (+{} damage)", itemNameStr, newLevel, newLevel);
-            else
+            if (weapon) {
+                int totalBonus = (newLevel * (newLevel + 1)) / 2;
+                int prevBonus = (currentLevel * (currentLevel + 1)) / 2;
+                int diff = totalBonus - prevBonus;
+                msg = std::format("{} upgraded to +{}! (+{} damage, Total: +{})", itemNameStr, newLevel, diff, totalBonus);
+            }
+            else {
                 msg = std::format("{} upgraded to +{}!", itemNameStr, newLevel);
+            }
             RE::DebugNotification(msg.c_str());
         } else {
             int failedLevel = currentLevel;
             int nextLevel = std::max(0, failedLevel - 1);
 
             if (weapon) {
-                float newDmg = orig + static_cast<float>(nextLevel);
+                int totalBonus = (nextLevel * (nextLevel + 1)) / 2;
+                float newDmg = orig + static_cast<float>(totalBonus);
                 weapon->attackDamage = static_cast<uint16_t>(std::round(newDmg));
             }
 
