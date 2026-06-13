@@ -9,6 +9,7 @@
 #include "RE/B/BSTDerivedCreator.h"
 #include "RE/B/BSEffectShaderData.h"
 #include "RE/E/ExtraTextDisplayData.h"
+#include "RE/E/ExtraHealth.h"
 #include "RE/E/ExtraWorn.h"
 #include "RE/S/ScriptEventSourceHolder.h"
 
@@ -201,16 +202,44 @@ extern "C" void __std_regex_transform_primary_char() {}
         float roll = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
         bool success = roll <= chance;
 
+        auto player = RE::PlayerCharacter::GetSingleton();
+        if (!player) return;
+
         if (success) {
             // Apply cumulative damage bonus (only meaningful for weapons)
-            // +1 -> +1 dmg, +2 -> +3 dmg, +3 -> +6 dmg, +4 -> +10 dmg ...
-            // Formula: Sum of integers from 1 to newLevel = (newLevel * (newLevel + 1)) / 2
+            // Skyrim uses ExtraHealth multiplier for Tempering.
+            // extraHealth->health = 1.0f (default), 1.5f (+50% base dmg), 2.0f (+100% base dmg), etc.
+            // Let's compute a health factor multiplier based on our total bonus divided by base damage,
+            // so that: new_damage = base_damage * health_factor.
             if (weapon) {
                 int totalBonus = (newLevel * (newLevel + 1)) / 2;
-                float newDmg = orig + static_cast<float>(totalBonus);
-                weapon->attackDamage = static_cast<uint16_t>(std::round(newDmg));
-                logger::info("Item '{}' upgraded SUCCESS to +{}. Damage: {} -> {}",
-                    itemNameStr, newLevel, static_cast<int>(orig), weapon->attackDamage);
+                float baseDmg = static_cast<float>(orig);
+                if (baseDmg <= 0.0f) baseDmg = 1.0f;
+                float healthFactor = 1.0f + (static_cast<float>(totalBonus) / baseDmg);
+
+                // Find the specific item's ExtraDataList in Player's inventory
+                auto* changes = player->GetInventoryChanges();
+                if (changes && changes->entryList) {
+                    for (auto* entry : *changes->entryList) {
+                        if (entry && entry->object == item && entry->extraLists) {
+                            for (auto* xList : *entry->extraLists) {
+                                if (xList) {
+                                    auto* xHealth = xList->GetByType<RE::ExtraHealth>();
+                                    if (xHealth) {
+                                        xHealth->health = healthFactor;
+                                    } else {
+                                        xHealth = RE::BSExtraData::Create<RE::ExtraHealth>();
+                                        xHealth->health = healthFactor;
+                                        xList->Add(xHealth);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                logger::info("Item '{}' upgraded SUCCESS to +{}. Health factor set to: {:.4f} (+{} damage)",
+                    itemNameStr, newLevel, healthFactor, totalBonus);
             } else {
                 logger::info("Item '{}' (shield) upgraded SUCCESS to +{}.", itemNameStr, newLevel);
             }
@@ -235,12 +264,33 @@ extern "C" void __std_regex_transform_primary_char() {}
 
             if (weapon) {
                 int totalBonus = (nextLevel * (nextLevel + 1)) / 2;
-                float newDmg = orig + static_cast<float>(totalBonus);
-                weapon->attackDamage = static_cast<uint16_t>(std::round(newDmg));
+                float baseDmg = static_cast<float>(orig);
+                if (baseDmg <= 0.0f) baseDmg = 1.0f;
+                float healthFactor = 1.0f + (static_cast<float>(totalBonus) / baseDmg);
+
+                auto* changes = player->GetInventoryChanges();
+                if (changes && changes->entryList) {
+                    for (auto* entry : *changes->entryList) {
+                        if (entry && entry->object == item && entry->extraLists) {
+                            for (auto* xList : *entry->extraLists) {
+                                if (xList) {
+                                    auto* xHealth = xList->GetByType<RE::ExtraHealth>();
+                                    if (xHealth) {
+                                        xHealth->health = healthFactor;
+                                    } else if (healthFactor > 1.0f) {
+                                        xHealth = RE::BSExtraData::Create<RE::ExtraHealth>();
+                                        xHealth->health = healthFactor;
+                                        xList->Add(xHealth);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            logger::info("Item '{}' upgraded FAILURE trying +{}. De-leveled: {} -> {}",
-                itemNameStr, newLevel, failedLevel, nextLevel);
+            logger::info("Item '{}' upgraded FAILURE trying +{}. De-leveled to +{}",
+                itemNameStr, newLevel, nextLevel);
 
             setWeaponDisplayName(item, nextLevel);
             WeaponUpgradeData::getInstance().setLevel(itemRefId, nextLevel);
