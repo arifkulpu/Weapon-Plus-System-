@@ -34,6 +34,8 @@ extern "C" void __std_regex_transform_primary_char() {}
         return target->As<RE::Actor>();
     }
 
+
+
     bool WeaponUpgradeSystem::isBlacksmith(RE::Actor* actor) const {
         if (!actor) return false;
         auto faction = RE::TESForm::LookupByEditorID<RE::TESFaction>("JobBlacksmithFaction");
@@ -70,6 +72,52 @@ extern "C" void __std_regex_transform_primary_char() {}
         return shield;
     }
 
+    // -----------------------------------------------------------------------
+    // Per-instance helpers
+    // -----------------------------------------------------------------------
+
+    // Returns the ExtraDataList that carries the kWorn flag for 'item' in
+    // the inventory (i.e. the exact stack that is equipped).
+    static RE::ExtraDataList* getWornExtraList(RE::Actor* actor, RE::TESForm* item, bool leftHand = false) {
+        if (!actor || !item) return nullptr;
+        auto* changes = actor->GetInventoryChanges();
+        if (!changes || !changes->entryList) return nullptr;
+        auto targetExtraType = leftHand ? RE::ExtraDataType::kWornLeft : RE::ExtraDataType::kWorn;
+        for (auto* entry : *changes->entryList) {
+            if (!entry || entry->object != item || !entry->extraLists) continue;
+            for (auto* xList : *entry->extraLists) {
+                if (xList && xList->HasType(targetExtraType))
+                    return xList;
+            }
+        }
+        return nullptr;
+    }
+
+    // Parses the upgrade level encoded in our custom display name.
+    // Parses the upgrade level encoded in our custom display name.
+    // Expected format anywhere in the string: "(+N)"  e.g. "Fine Iron Sword  (+3)"
+    // Returns 0 if the ExtraDataList has no custom name or the format is absent.
+    static int parseLevelFromExtraList(RE::ExtraDataList* xList) {
+        if (!xList) return 0;
+        auto* xText = xList->GetByType<RE::ExtraTextDisplayData>();
+        if (!xText) return 0;
+        std::string name = xText->displayName.c_str();
+        SKSE::log::info("parseLevelFromExtraList: Found displayName '{}'", name);
+        if (name.empty() || name[0] != '+') return 0;
+        
+        auto spacePos = name.find(' ');
+        if (spacePos == std::string::npos) return 0;
+        
+        try { 
+            int parsed = std::stoi(name.substr(1, spacePos - 1));
+            SKSE::log::info("parseLevelFromExtraList: Parsed level {}", parsed);
+            return parsed;
+        }
+        catch (...) { return 0; }
+    }
+
+
+
 
     // Main entry point
     // -----------------------------------------------------------------------
@@ -102,7 +150,18 @@ extern "C" void __std_regex_transform_primary_char() {}
             return;
         }
 
-        int currentLevel = WeaponUpgradeData::getInstance().getLevel(itemRefId);
+        RE::ExtraDataList* wornList = getWornExtraList(player, item, false);
+        if (!wornList) wornList = getWornExtraList(player, item, true);
+        int currentLevel = parseLevelFromExtraList(wornList);
+
+        // Smithing skill check
+        float smithingSkill = player->AsActorValueOwner()->GetActorValue(RE::ActorValue::kSmithing);
+        int requiredSmithing = (currentLevel + 1) * 10;
+        if (smithingSkill < requiredSmithing) {
+            std::string msg = std::format("You need {} Smithing to upgrade to +{} (Current: {:.0f}).", requiredSmithing, currentLevel + 1, smithingSkill);
+            RE::DebugNotification(msg.c_str());
+            return;
+        }
 
         int maxLvl = Config::getInstance().maxUpgradeLevel;
         if (currentLevel >= maxLvl) {
@@ -177,23 +236,38 @@ extern "C" void __std_regex_transform_primary_char() {}
     }
 
     // -----------------------------------------------------------------------
+    // Set inventory display name
+    // -----------------------------------------------------------------------
+
+    static void setExtraTextDisplayData(RE::ExtraDataList* xList, RE::TESForm* item, int level) {
+        if (!xList) return;
+        auto* xText = xList->GetByType<RE::ExtraTextDisplayData>();
+        std::string baseName = item ? item->GetName() : "Item";
+        if (baseName.empty()) baseName = "Weapon";
+
+        std::string newName = (level > 0)
+            ? std::format("+{} {}", level, baseName)
+            : baseName;
+
+        if (!xText) {
+            xText = new RE::ExtraTextDisplayData(newName.c_str());
+            xText->customNameLength = static_cast<std::int16_t>(newName.size());
+            xList->Add(xText);
+        } else {
+            xText->SetName(newName.c_str());
+            xText->customNameLength = static_cast<std::int16_t>(newName.size());
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Apply upgrade
     // -----------------------------------------------------------------------
 
     void WeaponUpgradeSystem::applyUpgrade(RE::TESForm* item, RE::FormID itemRefId, int newLevel) {
+        (void)itemRefId;
         if (!item) return;
-
-        // Try to cast to weapon (shields don't have attack damage)
         auto* weapon = item->As<RE::TESObjectWEAP>();
 
-        static std::unordered_map<RE::FormID, float> originalDamage;
-
-        if (originalDamage.find(itemRefId) == originalDamage.end()) {
-            if (weapon) originalDamage[itemRefId] = static_cast<float>(weapon->attackDamage);
-            else        originalDamage[itemRefId] = 0.0f; // shields don't have attackDamage
-        }
-
-        float orig = originalDamage[itemRefId];
         const char* rawName = item->GetName();
         std::string itemNameStr = (rawName && rawName[0]) ? rawName : "Item";
 
@@ -207,141 +281,60 @@ extern "C" void __std_regex_transform_primary_char() {}
         auto player = RE::PlayerCharacter::GetSingleton();
         if (!player) return;
 
-        if (success) {
-            // Apply cumulative damage bonus (only meaningful for weapons)
-            // Skyrim uses ExtraHealth multiplier for Tempering.
-            // extraHealth->health = 1.0f (default), 1.5f (+50% base dmg), 2.0f (+100% base dmg), etc.
-            // Let's compute a health factor multiplier based on our total bonus divided by base damage,
-            // so that: new_damage = base_damage * health_factor.
-            if (weapon) {
-                int totalBonus = (newLevel * (newLevel + 1)) / 2;
-                float baseDmg = static_cast<float>(orig);
-                if (baseDmg <= 0.0f) baseDmg = 1.0f;
-                float healthFactor = 1.0f + (static_cast<float>(totalBonus) / baseDmg);
+        int finalLevel = success ? newLevel : std::max(0, currentLevel - 1);
 
-                // Find the specific item's ExtraDataList in Player's inventory
-                auto* changes = player->GetInventoryChanges();
-                if (changes && changes->entryList) {
-                    for (auto* entry : *changes->entryList) {
-                        if (entry && entry->object == item && entry->extraLists) {
-                            for (auto* xList : *entry->extraLists) {
-                                if (xList && xList->HasType(RE::ExtraDataType::kWorn)) { // Target only equipped instance
-                                    auto* xHealth = xList->GetByType<RE::ExtraHealth>();
-                                    if (xHealth) {
-                                        xHealth->health = healthFactor;
-                                    } else {
-                                        xHealth = RE::BSExtraData::Create<RE::ExtraHealth>();
-                                        xHealth->health = healthFactor;
-                                        xList->Add(xHealth);
-                                    }
-                                }
-                            }
-                        }
-                    }
+        // Find the equipped extra list
+        RE::ExtraDataList* wornList = getWornExtraList(player, item, false);
+        if (!wornList) wornList = getWornExtraList(player, item, true);
+
+        if (wornList) {
+            // Set Name
+            setExtraTextDisplayData(wornList, item, finalLevel);
+
+            // Set Damage via ExtraHealth
+            if (weapon) {
+                auto* xHealth = wornList->GetByType<RE::ExtraHealth>();
+                if (!xHealth) {
+                    xHealth = new RE::ExtraHealth();
+                    xHealth->health = 1.0f;
+                    wornList->Add(xHealth);
                 }
+
+                float baseDmg = static_cast<float>(weapon->attackDamage);
+                if (baseDmg <= 0.0f) baseDmg = 1.0f; // safety
+
+                float newBonus = static_cast<float>((finalLevel * (finalLevel + 1)) / 2);
+                float oldBonus = static_cast<float>((currentLevel * (currentLevel + 1)) / 2);
+
+                // Preserve vanilla tempering base
+                float currentHealth = xHealth->health;
+                float vanillaBaseHealth = currentHealth - (oldBonus / baseDmg);
+                if (vanillaBaseHealth < 1.0f) vanillaBaseHealth = 1.0f;
+
+                xHealth->health = vanillaBaseHealth + (newBonus / baseDmg);
                 
-                logger::info("Item '{}' upgraded SUCCESS to +{}. Health factor set to: {:.4f} (+{} damage)",
-                    itemNameStr, newLevel, healthFactor, totalBonus);
-            } else {
-                logger::info("Item '{}' (shield) upgraded SUCCESS to +{}.", itemNameStr, newLevel);
+                // Set temperFactor to ensure the engine displays the correct quality tier dynamically!
+                auto* xText = wornList->GetByType<RE::ExtraTextDisplayData>();
+                if (xText) {
+                    xText->temperFactor = xHealth->health;
+                }
             }
+        }
 
-            setWeaponDisplayName(item, newLevel);
-            WeaponUpgradeData::getInstance().setLevel(itemRefId, newLevel);
-
-            std::string msg;
-            if (weapon) {
-                int totalBonus = (newLevel * (newLevel + 1)) / 2;
-                int prevBonus = (currentLevel * (currentLevel + 1)) / 2;
-                int diff = totalBonus - prevBonus;
-                msg = std::format("{} upgraded to +{}! (+{} damage, Total: +{})", itemNameStr, newLevel, diff, totalBonus);
-            }
-            else {
-                msg = std::format("{} upgraded to +{}!", itemNameStr, newLevel);
-            }
+        if (success) {
+            logger::info("Item '{}' SUCCESS +{}.", itemNameStr, newLevel);
+            std::string msg = std::format("{} upgraded to +{}!", itemNameStr, newLevel);
             RE::DebugNotification(msg.c_str());
         } else {
-            int failedLevel = currentLevel;
-            int nextLevel = std::max(0, failedLevel - 1);
-
-            if (weapon) {
-                int totalBonus = (nextLevel * (nextLevel + 1)) / 2;
-                float baseDmg = static_cast<float>(orig);
-                if (baseDmg <= 0.0f) baseDmg = 1.0f;
-                float healthFactor = 1.0f + (static_cast<float>(totalBonus) / baseDmg);
-
-                auto* changes = player->GetInventoryChanges();
-                if (changes && changes->entryList) {
-                    for (auto* entry : *changes->entryList) {
-                        if (entry && entry->object == item && entry->extraLists) {
-                            for (auto* xList : *entry->extraLists) {
-                                if (xList && xList->HasType(RE::ExtraDataType::kWorn)) { // Target only equipped instance
-                                    auto* xHealth = xList->GetByType<RE::ExtraHealth>();
-                                    if (xHealth) {
-                                        xHealth->health = healthFactor;
-                                    } else if (healthFactor > 1.0f) {
-                                        xHealth = RE::BSExtraData::Create<RE::ExtraHealth>();
-                                        xHealth->health = healthFactor;
-                                        xList->Add(xHealth);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            logger::info("Item '{}' upgraded FAILURE trying +{}. De-leveled to +{}",
-                itemNameStr, newLevel, nextLevel);
-
-            setWeaponDisplayName(item, nextLevel);
-            WeaponUpgradeData::getInstance().setLevel(itemRefId, nextLevel);
-
-            std::string msg;
-            if (nextLevel < failedLevel)
-                msg = std::format("{} upgrade failed! Level decreased to +{}.", itemNameStr, nextLevel);
-            else
-                msg = std::format("{} upgrade failed!", itemNameStr);
+            logger::info("Item '{}' upgraded FAILURE trying +{}. De-leveled to +{}", itemNameStr, newLevel, finalLevel);
+            std::string msg = std::format("{} upgrade failed! Level decreased to +{}.", itemNameStr, finalLevel);
             RE::DebugNotification(msg.c_str());
         }
 
         refreshGlow();
     }
 
-    // -----------------------------------------------------------------------
-    // Set inventory display name
-    // -----------------------------------------------------------------------
 
-    void WeaponUpgradeSystem::setWeaponDisplayName(RE::TESForm* item, int level) {
-        auto player = RE::PlayerCharacter::GetSingleton();
-        if (!player || !item) return;
-
-        const char* rawName = item->GetName();
-        std::string baseName = (rawName && rawName[0]) ? rawName : "Eşya";
-        std::string newName  = (level > 0) ? std::format("+{} {}", level, baseName) : baseName;
-
-        auto* changes = player->GetInventoryChanges();
-        if (!changes || !changes->entryList) return;
-
-        for (auto& entry : *changes->entryList) {
-            if (!entry || entry->object != item) continue;
-            if (!entry->extraLists) continue;
-
-            for (auto& xList : *entry->extraLists) {
-                if (xList && xList->HasType(RE::ExtraDataType::kWorn)) { // Only rename equipped item
-                    // Update (or create) ExtraTextDisplayData on the equipped instance
-                    auto* xText = xList->GetByType<RE::ExtraTextDisplayData>();
-                    if (!xText) {
-                        xText = new RE::ExtraTextDisplayData(newName.c_str());
-                        xList->Add(xText);
-                    } else {
-                        xText->SetName(newName.c_str());
-                    }
-                    SKSE::log::info("Set display name '{}' on equipped weapon instance.", newName);
-                }
-            }
-        }
-    }
 
     // -----------------------------------------------------------------------
     // Glow colour table (R, G, B, baseMult)
@@ -371,21 +364,72 @@ extern "C" void __std_regex_transform_primary_char() {}
         return { minMult, peakMult };
     }
 
+    struct RGB { float r, g, b; };
+
+    static RGB lerpColor(const RGB& c1, const RGB& c2, float t) {
+        return {
+            c1.r + (c2.r - c1.r) * t,
+            c1.g + (c2.g - c1.g) * t,
+            c1.b + (c2.b - c1.b) * t
+        };
+    }
+
+    static std::tuple<float, float, float> dynamicGlowColor(int level, float time) {
+        // Defines the palettes for +7, +8, +9
+        std::vector<RGB> palette;
+        float speed = 1.0f;
+
+        if (level == 7) {
+            // Poison/Acid theme: Light Green -> Dark Green -> Yellowish Green
+            palette = { {0.3f, 1.0f, 0.3f}, {0.0f, 0.4f, 0.0f}, {0.6f, 1.0f, 0.0f} };
+            speed = 1.0f;
+        } else if (level == 8) {
+            // Spark theme: Light Blue -> Dark Blue -> Purple -> Light Blue
+            palette = { {0.2f, 0.8f, 1.0f}, {0.0f, 0.2f, 1.0f}, {0.6f, 0.0f, 1.0f} };
+            speed = 1.0f;
+        } else {
+            // Fire/Legendary theme: Red -> Orange -> Yellow -> Red
+            palette = { {1.0f, 0.0f, 0.0f}, {1.0f, 0.5f, 0.0f}, {1.0f, 1.0f, 0.0f} };
+            speed = 1.5f + (level - 9) * 0.2f; // Gets faster at +10, +11...
+        }
+
+        // Calculate continuous index and fraction
+        float t = std::fmod(time * speed, static_cast<float>(palette.size()));
+        int idx1 = static_cast<int>(t);
+        int idx2 = (idx1 + 1) % palette.size();
+        float frac = t - idx1;
+
+        RGB c = lerpColor(palette[idx1], palette[idx2], frac);
+        return {c.r, c.g, c.b};
+    }
+
     void WeaponUpgradeSystem::applyEffectGlow(RE::NiAVObject* node, int level, float t, int depth) {
         if (!node || depth > 20) return;
 
-        auto [r, g, b, baseMult] = glowColorForLevel(level);
-        (void)baseMult;
+        float r, g, b, baseMult;
+        std::tie(r, g, b, baseMult) = glowColorForLevel(level);
+
+        // Dynamic Color Shift for +7 and above
+        if (level >= 7) {
+            auto [dr, dg, db] = dynamicGlowColor(level, t);
+            r = dr;
+            g = dg;
+            b = db;
+        }
 
         float freq = pulseFrequency(level);
         auto [minM, maxM] = pulseRange(level);
         float sineVal = 0.5f + 0.5f * std::sin(2.0f * 3.14159265f * freq * t);
         float emissiveMult = minM + (maxM - minM) * sineVal;
 
-        float shiftAmt = std::sin(t * (1.0f + level * 0.15f)) * (0.04f + level * 0.006f);
-        float fr = std::clamp(r + shiftAmt, 0.0f, 1.0f);
-        float fg = std::clamp(g + shiftAmt * 0.5f, 0.0f, 1.0f);
-        float fb = std::clamp(b - shiftAmt * 0.3f, 0.0f, 1.0f);
+        // Apply a tiny random color shift for static colors, but skip it for dynamic colors
+        float fr = r, fg = g, fb = b;
+        if (level < 7) {
+            float shiftAmt = std::sin(t * (1.0f + level * 0.15f)) * (0.04f + level * 0.006f);
+            fr = std::clamp(r + shiftAmt, 0.0f, 1.0f);
+            fg = std::clamp(g + shiftAmt * 0.5f, 0.0f, 1.0f);
+            fb = std::clamp(b - shiftAmt * 0.3f, 0.0f, 1.0f);
+        }
 
         if (auto geom = node->AsGeometry()) {
             auto& props = geom->GetGeometryRuntimeData().properties;
@@ -448,7 +492,6 @@ extern "C" void __std_regex_transform_primary_char() {}
     // -----------------------------------------------------------------------
 
     void WeaponUpgradeSystem::applyFollowerGlows(float t) {
-        auto& data = WeaponUpgradeData::getInstance();
 
         // Helper: try common right-hand weapon node names used by humanoid NPC skeletons.
         auto glowWeaponNodes = [&](RE::NiAVObject* root, int level) {
@@ -497,22 +540,22 @@ extern "C" void __std_regex_transform_primary_char() {}
             // Right hand
             auto* equippedR = actor->GetEquippedObject(false);
             if (equippedR) {
-                int lvR = data.getLevel(equippedR->GetFormID());
-                if (lvR > 0) glowWeaponNodes(root, lvR);
+                int lvR = parseLevelFromExtraList(getWornExtraList(actor.get(), equippedR, false));
+                if (lvR > 0) {
+                    glowWeaponNodes(root, lvR);
+                    if (auto* w = equippedR->As<RE::TESObjectWEAP>()) {
+                        if (w->IsBow() || w->IsCrossbow()) {
+                            glowShieldNodes(root, lvR); // Bow geometry is often on WEAPONL when drawn
+                        }
+                    }
+                }
             }
 
             // Left hand (weapon or shield)
             auto* equippedL = actor->GetEquippedObject(true);
             if (equippedL) {
-                RE::FormID idL = 0;
-                auto* wL = equippedL->As<RE::TESObjectWEAP>();
-                auto* sL = equippedL->As<RE::TESObjectARMO>();
-                if (wL) idL = wL->GetFormID();
-                else if (sL && sL->IsShield()) idL = sL->GetFormID();
-                if (idL > 0) {
-                    int lvL = data.getLevel(idL);
-                    if (lvL > 0) glowShieldNodes(root, lvL);
-                }
+                int lvL = parseLevelFromExtraList(getWornExtraList(actor.get(), equippedL, true));
+                if (lvL > 0) glowShieldNodes(root, lvL);
             }
         }
     }
@@ -551,16 +594,16 @@ extern "C" void __std_regex_transform_primary_char() {}
         for (auto* root : roots) {
             if (!root) continue;
             if (lvR > 0) {
-                auto* n = root->GetObjectByName("WEAPON");
-                if (n) applyEffectGlow(n, lvR, t);
-                auto* b = root->GetObjectByName("Bow");
-                if (b) applyEffectGlow(b, lvR, t);
+                for (const char* name : { "WEAPON", "Bow", "WeaponBow" }) {
+                    auto* n = root->GetObjectByName(name);
+                    if (n) applyEffectGlow(n, lvR, t);
+                }
             }
             if (lvL > 0) {
-                auto* n = root->GetObjectByName("WEAPONL");
-                if (n) applyEffectGlow(n, lvL, t);
-                auto* s = root->GetObjectByName("SHIELD");
-                if (s) applyEffectGlow(s, lvL, t);
+                for (const char* name : { "WEAPONL", "SHIELD", "Shield" }) {
+                    auto* n = root->GetObjectByName(name);
+                    if (n) applyEffectGlow(n, lvL, t);
+                }
             }
         }
 
@@ -663,12 +706,17 @@ extern "C" void __std_regex_transform_primary_char() {}
 
     RE::BSEventNotifyControl WeaponUpgradeSystem::ProcessEvent(
         const RE::TESEquipEvent* a_event,
-        RE::BSTEventSource<RE::TESEquipEvent>*) 
+        RE::BSTEventSource<RE::TESEquipEvent>*)
     {
-        if (!glowEnabled_) return RE::BSEventNotifyControl::kContinue;
-
         auto player = RE::PlayerCharacter::GetSingleton();
-        if (a_event && a_event->actor && a_event->actor.get() == player) {
+        if (!a_event || !a_event->actor || a_event->actor.get() != player)
+            return RE::BSEventNotifyControl::kContinue;
+
+        auto* form   = RE::TESForm::LookupByID(a_event->baseObject);
+        auto* weapon = form ? form->As<RE::TESObjectWEAP>() : nullptr;
+        auto* shield = form ? form->As<RE::TESObjectARMO>() : nullptr;
+
+        if (weapon || (shield && shield->IsShield())) {
             triggerDelayedRefresh();
         }
 
@@ -716,34 +764,29 @@ extern "C" void __std_regex_transform_primary_char() {}
         auto player = RE::PlayerCharacter::GetSingleton();
         if (!player || !player->Is3DLoaded()) return;
 
-        RE::FormID weaponRefIdR = 0;
+        int levelR = 0;
+        int levelL = 0;
         try {
-            auto equippedR = player->GetEquippedObject(false);
-            if (equippedR) {
-                auto* w = equippedR->As<RE::TESObjectWEAP>();
-                if (w) weaponRefIdR = w->GetFormID();
+            if (auto equippedR = player->GetEquippedObject(false)) {
+                levelR = parseLevelFromExtraList(getWornExtraList(player, equippedR, false));
+                SKSE::log::info("refreshGlow: Right hand level is {}", levelR);
+                if (auto* w = equippedR->As<RE::TESObjectWEAP>()) {
+                    if (w->IsBow() || w->IsCrossbow()) {
+                        levelL = levelR; // Bow geometry is often on WEAPONL when drawn
+                        SKSE::log::info("refreshGlow: Bow/Crossbow detected, setting levelL = {}", levelL);
+                    }
+                }
             }
         } catch (...) { logger::error("Exception reading right-hand in refreshGlow"); }
 
-        RE::FormID weaponRefIdL = 0;
         try {
-            auto equippedL = player->GetEquippedObject(true);
-            if (equippedL) {
-                auto* w = equippedL->As<RE::TESObjectWEAP>();
-                if (w) {
-                    weaponRefIdL = w->GetFormID();
-                } else {
-                    auto* s = equippedL->As<RE::TESObjectARMO>();
-                    if (s && s->IsShield()) weaponRefIdL = s->GetFormID();
-                }
+            if (auto equippedL = player->GetEquippedObject(true)) {
+                int parsedL = parseLevelFromExtraList(getWornExtraList(player, equippedL, true));
+                if (parsedL > 0) levelL = parsedL;
             }
         } catch (...) { logger::error("Exception reading left-hand in refreshGlow"); }
 
-        int levelR = weaponRefIdR > 0 ? WeaponUpgradeData::getInstance().getLevel(weaponRefIdR) : 0;
-        int levelL = weaponRefIdL > 0 ? WeaponUpgradeData::getInstance().getLevel(weaponRefIdL) : 0;
-
-        SKSE::log::info("refreshGlow() - R=0x{:X} Lv{}, L=0x{:X} Lv{}",
-            weaponRefIdR, levelR, weaponRefIdL, levelL);
+        SKSE::log::info("refreshGlow() - LvR={}, LvL={}", levelR, levelL);
 
         // Cache levels so the animation thread knows what to animate
         lastLevelR_.store(levelR, std::memory_order_relaxed);
@@ -756,26 +799,20 @@ extern "C" void __std_regex_transform_primary_char() {}
         for (auto* root : roots) {
             if (!root) continue;
 
-            auto* nodeR = root->GetObjectByName("WEAPON");
-            if (nodeR) {
-                if (levelR > 0) applyEffectGlow(nodeR, levelR, t);
-                else            clearEffectGlow(nodeR);
-            }
-            auto* bowNode = root->GetObjectByName("Bow");
-            if (bowNode) {
-                if (levelR > 0) applyEffectGlow(bowNode, levelR, t);
-                else            clearEffectGlow(bowNode);
+            for (const char* name : { "WEAPON", "Bow", "WeaponBow" }) {
+                auto* n = root->GetObjectByName(name);
+                if (n) {
+                    if (levelR > 0) applyEffectGlow(n, levelR, t);
+                    else            clearEffectGlow(n);
+                }
             }
 
-            auto* nodeL = root->GetObjectByName("WEAPONL");
-            if (nodeL) {
-                if (levelL > 0) applyEffectGlow(nodeL, levelL, t);
-                else            clearEffectGlow(nodeL);
-            }
-            auto* shieldNode = root->GetObjectByName("SHIELD");
-            if (shieldNode) {
-                if (levelL > 0) applyEffectGlow(shieldNode, levelL, t);
-                else            clearEffectGlow(shieldNode);
+            for (const char* name : { "WEAPONL", "SHIELD", "Shield" }) {
+                auto* n = root->GetObjectByName(name);
+                if (n) {
+                    if (levelL > 0) applyEffectGlow(n, levelL, t);
+                    else            clearEffectGlow(n);
+                }
             }
         }
     }

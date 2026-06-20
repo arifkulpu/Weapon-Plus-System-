@@ -1,6 +1,7 @@
 #pragma once
 #include "WeaponUpgradeData.h"
 #include <algorithm>
+#include <atomic>
 
 namespace plugin {
 
@@ -72,6 +73,12 @@ namespace plugin {
         void startGlowLoop();
         void stopGlowLoop();
 
+        /**
+         * Updates the weapon's custom display name in ExtraTextDisplayData.
+         * Public so it can be called from task lambdas (e.g. on equip).
+         */
+        void setWeaponDisplayName(RE::TESForm* item, int level);
+
     private:
         WeaponUpgradeSystem() = default;
 
@@ -81,7 +88,7 @@ namespace plugin {
         RE::TESObjectARMO* getEquippedShield(RE::FormID& outRefId) const;
         void showUpgradeMenu(RE::TESForm* item, RE::FormID weaponRefId, int currentLevel);
         void applyUpgrade(RE::TESForm* item, RE::FormID weaponRefId, int newLevel);
-        void setWeaponDisplayName(RE::TESForm* item, int level);
+        // (setWeaponDisplayName moved to public section above)
 
         // Apply BSEffectShaderData glow to all geometry under a node
         void applyEffectGlow(RE::NiAVObject* node, int level, float t, int depth = 0);

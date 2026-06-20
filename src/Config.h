@@ -41,15 +41,15 @@ namespace plugin {
 
         // Glow colors for levels 1 to 9 (tuple: Red, Green, Blue, Multiplier)
         std::vector<std::tuple<float, float, float, float>> glowColors = {
-            {1.0f, 1.0f,  1.0f,  1.2f}, // +1
-            {0.6f, 0.85f, 1.0f,  2.0f}, // +2
-            {0.1f, 0.4f,  1.0f,  2.8f}, // +3
-            {0.0f, 0.9f,  0.9f,  3.5f}, // +4
-            {0.1f, 1.0f,  0.3f,  4.0f}, // +5
-            {1.0f, 1.0f,  0.0f,  4.8f}, // +6
-            {1.0f, 0.5f,  0.0f,  5.5f}, // +7
-            {1.0f, 0.15f, 0.0f,  6.5f}, // +8
-            {1.0f, 0.0f,  0.0f,  8.0f}  // +9
+            {1.0f, 1.0f, 1.0f, 1.2f}, // +1: White
+            {0.7f, 0.8f, 1.0f, 2.0f}, // +2: Light Silver/Blue
+            {0.4f, 0.6f, 1.0f, 2.8f}, // +3: Pale Blue
+            {0.2f, 0.9f, 0.4f, 3.5f}, // +4: Pale Green
+            {1.0f, 0.8f, 0.1f, 4.0f}, // +5: Gold/Yellow
+            {0.8f, 0.2f, 1.0f, 4.8f}, // +6: Pink/Purple
+            {1.0f, 0.5f, 0.0f, 5.5f}, // +7: (Overridden by dynamic RGB shift)
+            {1.0f, 0.15f,0.0f, 6.5f}, // +8: (Overridden by dynamic RGB shift)
+            {1.0f, 0.0f, 0.0f, 8.0f}  // +9: (Overridden by dynamic RGB shift)
         };
 
         void load() {
@@ -165,15 +165,15 @@ namespace plugin {
 
             file << "[GlowColors]\n";
             file << "; Custom glowing colors for weapon level. Format: R,G,B,Multiplier (values 0.0 to 1.0 for RGB)\n";
-            file << "GlowColor1 = 1.0, 1.0, 1.0, 1.2   ; White (+1)\n";
-            file << "GlowColor2 = 0.6, 0.85, 1.0, 2.0  ; Light Blue (+2)\n";
-            file << "GlowColor3 = 0.1, 0.4, 1.0, 2.8   ; Deep Blue (+3)\n";
-            file << "GlowColor4 = 0.0, 0.9, 0.9, 3.5   ; Cyan (+4)\n";
-            file << "GlowColor5 = 0.1, 1.0, 0.3, 4.0   ; Green (+5)\n";
-            file << "GlowColor6 = 1.0, 1.0, 0.0, 4.8   ; Yellow (+6)\n";
-            file << "GlowColor7 = 1.0, 0.5, 0.0, 5.5   ; Orange (+7)\n";
-            file << "GlowColor8 = 1.0, 0.15, 0.0, 6.5  ; Red-Orange (+8)\n";
-            file << "GlowColor9 = 1.0, 0.0, 0.0, 8.0   ; Deep Red (+9)\n";
+            file << "GlowColor1 = 1.0, 1.0, 1.0, 1.2    ; White (+1)\n";
+            file << "GlowColor2 = 0.7, 0.8, 1.0, 2.0    ; Light Silver/Blue (+2)\n";
+            file << "GlowColor3 = 0.4, 0.6, 1.0, 2.8    ; Pale Blue (+3)\n";
+            file << "GlowColor4 = 0.2, 0.9, 0.4, 3.5    ; Pale Green (+4)\n";
+            file << "GlowColor5 = 1.0, 0.8, 0.1, 4.0    ; Gold/Yellow (+5)\n";
+            file << "GlowColor6 = 0.8, 0.2, 1.0, 4.8    ; Pink/Purple (+6)\n";
+            file << "GlowColor7 = 1.0, 0.5, 0.0, 5.5    ; Note: +7/+8/+9 colors are now dynamically shifted in code!\n";
+            file << "GlowColor8 = 1.0, 0.15, 0.0, 6.5   ; Note: +7/+8/+9 colors are now dynamically shifted in code!\n";
+            file << "GlowColor9 = 1.0, 0.0, 0.0, 8.0    ; Note: +7/+8/+9 colors are now dynamically shifted in code!\n";
 
             SKSE::log::info("Generated default Config at: {}", path.string());
         }

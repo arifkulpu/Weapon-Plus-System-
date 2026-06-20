@@ -34,7 +34,12 @@ A premium, performance-optimized **Skyrim Special Edition (v1.6.1170)** SKSE C++
 
 ### Changelog
 
-#### [NEW] Version 1.0.3
+#### [NEW] Version 1.0.6
+* **Dynamic Color Transitions (RGB LERP System)**: The colors of +7 and above weapons are no longer static. In addition to the breathing effect, color palettes smoothly transition into one another, creating a fluid visual feast. Colors between +1 and +6 have also been recalibrated to be more harmonious.
+* **Name Persistence System**: Weapon upgrade levels (e.g., `+7`) are now sealed to the item's Custom Name. This ensures that the upgrade level is not lost when saving and reloading the game.
+* **Code and Performance Optimization**: Unused systems (Particle ArtObject experiments, texture-breaking UV Scrolling mechanics, etc.) have been completely removed, and the SKSE animation loop (30 FPS) has been optimized, making the mod extremely lightweight and FPS-friendly.
+
+#### Version 1.0.3
 * **INI Configuration File Support**: Adds a fully customizable `WeaponPlusSystem.ini` config file automatically generated inside `Data/SKSE/Plugins/`. Users can now customize:
   * Key bindings (`UpgradeKey`) using DirectInput Hex codes (Default: `0x26` for **L**).
   * Toggle glow effects (`EnableGlow`).
@@ -84,7 +89,12 @@ Skyrim Special Edition için geliştirilmiş, performans odaklı ve son teknoloj
 
 ### Güncelleme Geçmişi
 
-#### [YENİ] Sürüm 1.0.3
+#### [YENİ] Sürüm 1.0.6
+* **Dinamik Renk Geçişleri (RGB LERP Sistemi)**: +7 ve üzeri (efsanevi seviye) silahların renkleri artık sabit kalmaz. Nefes alma efektine ek olarak, renk paletleri pürüzsüz bir şekilde birbiri içine geçerek akıcı bir görsel şölen yaratır. +1 ile +6 arasındaki renkler de uyumlu olacak şekilde yeniden kalibre edildi.
+* **İsim Kalıcılığı Sistemi**: Silahların yükseltme dereceleri (örneğin `+7`) artık eşyanın özel ismine (Custom Name) mühürlenmektedir. Bu sayede oyunu kaydedip baştan yüklediğinizde yükseltme derecesi silinmez.
+* **Kod ve Performans Optimizasyonu**: Kullanılmayan sistemler (Particle ArtObject denemeleri, kılıcın dokusunu bozan UV Scrolling mekanikleri vb.) tamamen temizlenmiş, SKSE animasyon döngüsü (30 FPS) optimize edilerek mod son derece hafif ve FPS dostu bir hale getirilmiştir.
+
+#### Sürüm 1.0.3
 * **INI Yapılandırma Dosyası Desteği**: Eklenti ilk kez çalıştığında `Data/SKSE/Plugins/` altında otomatik olarak `WeaponPlusSystem.ini` ayar dosyasını oluşturur. Buradan şu ayarları düzenleyebilirsiniz:
   * Yükseltme açma tuşu (`UpgradeKey`) DirectInput Hex değerleri ile (Örn: L için `0x26`).
   * Parlama efekti kontrolü (`EnableGlow`).
