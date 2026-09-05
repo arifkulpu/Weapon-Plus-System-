@@ -72,7 +72,7 @@ namespace plugin {
             std::string line;
             while (std::getline(file, line)) {
                 // Remove whitespaces and comments
-                line.erase(std::remove_if(line.begin(), line.end(), ::isspace), line.end());
+                line.erase(std::remove_if(line.begin(), line.end(), [](unsigned char c) { return std::isspace(c); }), line.end());
                 if (line.empty() || line[0] == ';' || line[0] == '#') continue;
 
                 auto delimiterPos = line.find('=');
@@ -133,49 +133,50 @@ namespace plugin {
                 upgradeKey, enableGlow, goldCostMultiplier, maxUpgradeLevel);
         }
 
-    private:
-        Config() = default;
-
-        void saveDefault(const std::filesystem::path& path) {
-            std::ofstream file(path);
-            if (!file.is_open()) return;
+        void save() {
+            std::filesystem::path iniPath = "Data/SKSE/Plugins/WeaponPlusSystem.ini";
+            std::filesystem::create_directories(iniPath.parent_path());
+            
+            std::ofstream file(iniPath);
+            if (!file.is_open()) {
+                SKSE::log::error("Config::save() - Failed to open ini file for writing!");
+                return;
+            }
 
             file << "; Weapon Plus System Settings\n\n";
             file << "[General]\n";
             file << "; DirectInput Keyboard Scan Code (e.g. 0x26 = L, 0x1E = A, 0x2D = X)\n";
-            file << "UpgradeKey = 0x26\n\n";
+            file << "UpgradeKey = 0x" << std::hex << upgradeKey << std::dec << "\n\n";
             file << "; Toggle weapon/shield glow effects (true/false)\n";
-            file << "EnableGlow = true\n\n";
+            file << "EnableGlow = " << (enableGlow ? "true" : "false") << "\n\n";
             file << "; Cost of upgrading: (CurrentLevel + 1) * GoldCostMultiplier\n";
-            file << "GoldCostMultiplier = 100\n\n";
+            file << "GoldCostMultiplier = " << goldCostMultiplier << "\n\n";
             file << "; Maximum level a weapon/shield can be upgraded to (Default: 9)\n";
-            file << "MaxUpgradeLevel = 9\n\n";
+            file << "MaxUpgradeLevel = " << maxUpgradeLevel << "\n\n";
             
             file << "[SuccessChances]\n";
             file << "; Probability rates between 0.0 (0%) and 1.0 (100%)\n";
-            file << "ChanceLevel0 = 1.00   ; Attempting +1\n";
-            file << "ChanceLevel1 = 0.90   ; Attempting +2\n";
-            file << "ChanceLevel2 = 0.80   ; Attempting +3\n";
-            file << "ChanceLevel3 = 0.70   ; Attempting +4\n";
-            file << "ChanceLevel4 = 0.60   ; Attempting +5\n";
-            file << "ChanceLevel5 = 0.50   ; Attempting +6\n";
-            file << "ChanceLevel6 = 0.40   ; Attempting +7\n";
-            file << "ChanceLevel7 = 0.30   ; Attempting +8\n";
-            file << "ChanceLevel8 = 0.25   ; Attempting +9\n\n";
+            for (size_t i = 0; i < successChances.size(); ++i) {
+                file << "ChanceLevel" << i << " = " << successChances[i] << "\n";
+            }
+            file << "\n";
 
             file << "[GlowColors]\n";
             file << "; Custom glowing colors for weapon level. Format: R,G,B,Multiplier (values 0.0 to 1.0 for RGB)\n";
-            file << "GlowColor1 = 1.0, 1.0, 1.0, 1.2    ; White (+1)\n";
-            file << "GlowColor2 = 0.7, 0.8, 1.0, 2.0    ; Light Silver/Blue (+2)\n";
-            file << "GlowColor3 = 0.4, 0.6, 1.0, 2.8    ; Pale Blue (+3)\n";
-            file << "GlowColor4 = 0.2, 0.9, 0.4, 3.5    ; Pale Green (+4)\n";
-            file << "GlowColor5 = 1.0, 0.8, 0.1, 4.0    ; Gold/Yellow (+5)\n";
-            file << "GlowColor6 = 0.8, 0.2, 1.0, 4.8    ; Pink/Purple (+6)\n";
-            file << "GlowColor7 = 1.0, 0.5, 0.0, 5.5    ; Note: +7/+8/+9 colors are now dynamically shifted in code!\n";
-            file << "GlowColor8 = 1.0, 0.15, 0.0, 6.5   ; Note: +7/+8/+9 colors are now dynamically shifted in code!\n";
-            file << "GlowColor9 = 1.0, 0.0, 0.0, 8.0    ; Note: +7/+8/+9 colors are now dynamically shifted in code!\n";
+            for (size_t i = 0; i < glowColors.size(); ++i) {
+                auto [r, g, b, mult] = glowColors[i];
+                file << "GlowColor" << (i + 1) << " = " << r << ", " << g << ", " << b << ", " << mult << "\n";
+            }
 
-            SKSE::log::info("Generated default Config at: {}", path.string());
+            SKSE::log::info("Config saved to: {}", iniPath.string());
+        }
+
+    private:
+        Config() = default;
+
+        void saveDefault(const std::filesystem::path& path) {
+            (void)path;
+            save();
         }
     };
 

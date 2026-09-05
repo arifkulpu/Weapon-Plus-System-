@@ -4,6 +4,7 @@
 #include "Serialization.h"
 #include "WeaponUpgradeSystem.h"
 #include "Config.h"
+#include "SMFMenu.h"
 
 namespace plugin {
     void GameEventHandler::onLoad() {
@@ -13,9 +14,6 @@ namespace plugin {
         Config::getInstance().load();
 
         Hooks::install();
-
-        // Register SKSE cosave serialization
-        Serialization::install();
     }
 
     void GameEventHandler::onPostLoad() {
@@ -34,10 +32,12 @@ namespace plugin {
 
     void GameEventHandler::onDataLoaded() {
         logger::info("onDataLoaded()");
+        RegisterSMFMenu();
     }
 
     void GameEventHandler::onNewGame() {
         logger::info("onNewGame()");
+        WeaponUpgradeSystem::getInstance().startGlowLoop();
     }
 
     void GameEventHandler::onPreLoadGame() {

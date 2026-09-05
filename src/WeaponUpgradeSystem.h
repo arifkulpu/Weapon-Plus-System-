@@ -74,52 +74,75 @@ namespace plugin {
         void stopGlowLoop();
 
         /**
-         * Updates the weapon's custom display name in ExtraTextDisplayData.
-         * Public so it can be called from task lambdas (e.g. on equip).
+         * Toggle glow enabled state dynamically (called from SMF menu).
          */
-        void setWeaponDisplayName(RE::TESForm* item, int level);
+        void setGlowEnabled(bool enabled);
+
+        /**
+         * Performs all pre-upgrade validation checks and opens the upgrade menu.
+         * Public so HandSelectionMenuCallback can invoke it after hand selection.
+         */
+        void processUpgradeCheck(RE::TESForm* item, bool isLeftHand);
+
+        // Called by callbacks to clear the open state
+        void setMenuOpen(bool open) { menuOpen_.store(open, std::memory_order_relaxed); }
 
     private:
         WeaponUpgradeSystem() = default;
 
         RE::Actor* getCrosshairActor() const;
         bool isBlacksmith(RE::Actor* actor) const;
-        RE::TESObjectWEAP* getEquippedWeapon(RE::FormID& outRefId) const;
-        RE::TESObjectARMO* getEquippedShield(RE::FormID& outRefId) const;
-        void showUpgradeMenu(RE::TESForm* item, RE::FormID weaponRefId, int currentLevel);
-        void applyUpgrade(RE::TESForm* item, RE::FormID weaponRefId, int newLevel);
-        // (setWeaponDisplayName moved to public section above)
+        void showHandSelectionMenu(RE::TESForm* itemR, int levelR, RE::TESForm* itemL, int levelL);
+        void showUpgradeMenu(RE::TESForm* item, RE::FormID weaponRefId, int currentLevel, bool isLeftHand = false);
+        void applyUpgrade(RE::TESForm* item, RE::FormID weaponRefId, int newLevel, bool isLeftHand = false);
 
         // Apply BSEffectShaderData glow to all geometry under a node
         void applyEffectGlow(RE::NiAVObject* node, int level, float t, int depth = 0);
         void clearEffectGlow(RE::NiAVObject* node, int depth = 0);
         void applyFollowerGlows(float t);
-        void printNodeHierarchy(RE::NiAVObject* node, int indent = 0);
 
-        bool menuOpen_ = false;
-        bool glowEnabled_ = false;
+        std::atomic<bool> menuOpen_{ false };
+        std::atomic<bool> glowEnabled_{ false };
 
         // Cached upgrade levels — written from main thread on equip, read from anim thread
         std::atomic<int> lastLevelR_{ 0 };
         std::atomic<int> lastLevelL_{ 0 };
 
-        // Animation thread control
-        std::atomic<bool> animRunning_{ false };
+        std::atomic<RE::FormID> lastItemR_{ 0 };
+        std::atomic<RE::FormID> lastItemL_{ 0 };
+
+        // Animation thread control & lifecycle
+        std::atomic<bool>     animRunning_{ false };
+        std::atomic<uint64_t> generation_{ 0 };
+        std::thread           animThread_;
+
+        // Debounce tracking for delayed refresh
+        std::atomic<uint64_t> refreshGen_{ 0 };
 
         // Time accumulator (seconds) — written by background thread, read by main thread via AddTask
         std::atomic<float> glowTime_{ 0.0f };
 
         // Throttle counter: follower glows are expensive, only refresh every N ticks
         std::atomic<int> followerGlowThrottle_{ 0 };
-
-        void setGlowEnabled(bool enabled) { glowEnabled_ = enabled; }
     };
 
-    // ---- MessageBox Callback ----
+    // ---- MessageBox Callbacks ----
+    class HandSelectionMenuCallback : public RE::IMessageBoxCallback {
+    public:
+        HandSelectionMenuCallback(RE::TESForm* itemR, RE::TESForm* itemL)
+            : itemR_(itemR), itemL_(itemL) {}
+
+        void Run(RE::IMessageBoxCallback::Message a_button) override;
+
+    private:
+        RE::TESForm* itemR_;
+        RE::TESForm* itemL_;
+    };
+
     class UpgradeMenuCallback : public RE::IMessageBoxCallback {
     public:
-        UpgradeMenuCallback(RE::TESForm* item, RE::FormID weaponRefId, int currentLevel)
-            : item_(item), weaponRefId_(weaponRefId), currentLevel_(currentLevel) {}
+        UpgradeMenuCallback(RE::TESForm* item, RE::FormID weaponRefId, int currentLevel, bool isLeftHand = false)
+            : item_(item), weaponRefId_(weaponRefId), currentLevel_(currentLevel), isLeftHand_(isLeftHand) {}
 
         void Run(RE::IMessageBoxCallback::Message a_button) override;
 
@@ -127,6 +150,7 @@ namespace plugin {
         RE::TESForm* item_;
         RE::FormID   weaponRefId_;
         int          currentLevel_;
+        bool         isLeftHand_;
     };
 
 }  // namespace plugin

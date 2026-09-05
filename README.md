@@ -28,11 +28,20 @@ A premium, performance-optimized **Skyrim Special Edition (v1.6.1170)** SKSE C++
 * **First-Person & Third-Person Support**: The glowing visual shader is automatically refreshed and perfectly visible in both 1st-person arms and 3rd-person world models.
 * **Smart UI & Camera Event Tracking**: Zero performance overhead! The plugin is fully event-driven, listening directly to `TESEquipEvent`, `SKSE::CameraEvent` (1st/3rd person switches), and `RE::MenuOpenCloseEvent` (when closing inventory/favorites/crafting menus) to safely re-apply glows asynchronously without heavy frame loops.
 * **Background Animation Thread**: A dedicated ~30 fps background thread advances the glow timer and dispatches a single update task to the main thread each tick — no recursive scheduling, no hangs.
-* **Bow & Shield Glow Support**: Upgraded bows and shields also receive the full animated glow treatment — the glow is applied to the correct NiAV nodes (`Bow`, `WeaponBow`, `SHIELD`) in both first- and third-person views.
-* **Companion / Follower Glow Support**: Give an upgraded weapon or shield to your companion and they will also glow! The system scans all nearby actors within ~50 metres every animation tick and applies the correct tier glow to their equipped items. Fully compatible with **NFF (Nether's Follower Framework)** and oth* **SKSE Cosave Serialization**: Upgrade levels are fully persistent and cleanly saved and loaded inside your standard Skyrim save files.
+* **Name & ExtraHealth Persistence System**: Upgrade levels and damage scaling are persistent and sealed directly to the item instance (`ExtraTextDisplayData` and `ExtraHealth`), surviving game saves, loads, and inventory transfers without external save bloat.
 * **Community Shaders Compatibility**: Built with custom direct material emittance overrides that bypass the standard BSEffectShader data structure, ensuring 100% crash-free stability when running *Community Shaders* (including Metals and Dynamic Cubemaps).
 
 ### Changelog
+
+#### [NEW] Version 1.1.0
+* **SKSE Menu Framework (SMF) Integration**: Full in-game configuration menu support! You can now adjust all mod settings (glow toggles, gold cost multiplier, max upgrade level, per-level success chances, and glow colors) in real-time inside Skyrim using SKSE Menu Framework.
+* **In-Game Save to INI**: Includes a "Save Settings to INI" button directly inside the menu interface to persist your custom settings across game sessions.
+
+#### Version 1.0.8
+* **Improved Dynamic Color Transitions**: The color palettes for +7, +8, and +9 weapons have been redesigned with high-contrast colors so that transitions are clearly visible.
+  * **+7 (Poison/Acid)**: Bright Lime Green → Dark Brown/Rust → Bright Yellow
+  * **+8 (Electric/Spark)**: Bright Cyan → Deep Dark Blue → Bright Purple
+  * **+9 (Fire/Legendary)**: Bright Yellow → Deep Red → Bright Orange
 
 #### [NEW] Version 1.0.6
 * **Dynamic Color Transitions (RGB LERP System)**: The colors of +7 and above weapons are no longer static. In addition to the breathing effect, color palettes smoothly transition into one another, creating a fluid visual feast. Colors between +1 and +6 have also been recalibrated to be more harmonious.
@@ -84,10 +93,20 @@ Skyrim Special Edition için geliştirilmiş, performans odaklı ve son teknoloj
 * **Arka Plan Animasyon Thread'i**: Özel bir ~30 fps arka plan thread'i parlama zamanlayıcısını ilerletir ve her adımda ana thread'e tek bir güncelleme görevi gönderir — recursive zamanlama yok, askı (hang) yok.
 * **Yay ve Kalkan Parlaması**: Yükseltilmiş yaylar ve kalkanlar da aynı animasyonlu parlama efektini alır. Glow doğru NiAV node'larına (`Bow`, `WeaponBow`, `SHIELD`) uygulanarak hem birinci hem de üçüncü şahıs görünümünde mükemmel çalışır.
 * **Takipçi / Companion Parlaması**: Yükseltilmiş silah veya kalkanı takipçinize verdiğinizde, takipçinizin elindeki eşya da parlar! Sistem her animasyon adımında yakındaki (~50 metre) tüm aktörleri tarar ve doğru seviye parlamasını uygular. **NFF (Nether's Follower Framework)** ve diğer takipçi modlarıyla tam uyumludur.
-* **SKSE Cosave Kayıt Sistemi**: Silahlarınızın seviyeleri tamamen kalıcıdır; oyunu kaydettiğinizde otomatik olarak `.ess / .cosave` kayıt dosyalarınıza yazılır ve oyunu tekrar açtığınızda sorunsuz bir şekilde yüklenir.
+* **İsim ve ExtraHealth Kalıcılık Sistemi**: Silahlarınızın seviyeleri ve hasar artışları doğrudan eşya kopyasına (`ExtraTextDisplayData` ve `ExtraHealth`) mühürlenir, oyun kaydedildiğinde ve tekrar yüklendiğinde hiçbir veri kaybı yaşanmaz.
 * **Community Shaders Uyumluluğu**: *Community Shaders* (Metals ve Dynamic Cubemaps dahil) kurulu sistemlerde çökmeye neden olan klasik shader yapısı yerine doğrudan materyal ışıması (`BSLightingShaderProperty`) modifikasyonları kullanılarak %100 kararlılık sağlanmıştır.
 
 ### Güncelleme Geçmişi
+
+#### [YENİ] Sürüm 1.1.0
+* **SKSE Menu Framework (SMF) Entegrasyonu**: Tam oyun içi ayar menüsü desteği! Artık tüm mod ayarlarını (parlama açma/kapama, altın maliyet çarpanı, maksimum seviye sınırı, her seviye için başarı oranları ve parlama renkleri) SKSE Menu Framework arayüzünü kullanarak oyun içinden canlı olarak yapılandırabilirsiniz.
+* **Oyun İçi INI Kaydı**: Menü içerisindeki "Save Settings to INI" butonu sayesinde yaptığınız ayarları tek tıkla `WeaponPlusSystem.ini` dosyasına kaydedebilirsiniz.
+
+#### Version 1.0.8
+* **Geliştirilmiş Dinamik Renk Geçişleri**: +7, +8 ve +9 silahların renk paletleri yüksek kontrastlı renklerle yeniden tasarlandı, böylece geçişler açıkça görülebiliyor.
+  * **+7 (Zehir/Asit)**: Parlak Limon Yeşili → Koyu Pas/Kahverengi → Parlak Sarı
+  * **+8 (Elektrik/Kıvılcım)**: Parlak Cyan → Koyu Lacivert → Parlak Mor
+  * **+9 (Alev/Efsanevi)**: Parlak Sarı → Derin Kırmızı → Parlak Turuncu
 
 #### [YENİ] Sürüm 1.0.6
 * **Dinamik Renk Geçişleri (RGB LERP Sistemi)**: +7 ve üzeri (efsanevi seviye) silahların renkleri artık sabit kalmaz. Nefes alma efektine ek olarak, renk paletleri pürüzsüz bir şekilde birbiri içine geçerek akıcı bir görsel şölen yaratır. +1 ile +6 arasındaki renkler de uyumlu olacak şekilde yeniden kalibre edildi.
@@ -100,7 +119,6 @@ Skyrim Special Edition için geliştirilmiş, performans odaklı ve son teknoloj
   * Parlama efekti kontrolü (`EnableGlow`).
   * Fiyat çarpanı (`GoldCostMultiplier`).
   * Maksimum geliştirme sınırı (`MaxUpgradeLevel`).
-  * Seviyelere özel dinamik şans oranları (`ChanceLevel0` ile `ChanceLevel8` arası).
 * **Bireysel Silah Yükseltme (Tempering/ExtraHealth)**: Silah hasarını artık base (ortak) form üzerinden değil, Skyrim'in kendi bileme (tempering) yapısını taklit ederek benzersiz envanter kopyası (`ExtraHealth`) üzerinden artırır. Böylelikle yükseltilen kılıç sadece size özel olur, dünyadaki diğer kopyaların hasarı artmaz.
 * **Çoklu Sürüm Uyumlu Tek DLL**: CommonLibSSE-NG altyapısıyla derleme özellikleri güncellenerek; Skyrim Special Edition **(v1.5.97)**, Anniversary Edition **(v1.6.1170)** ve **Skyrim VR** üzerinde tek bir DLL dosyasının çalışabilmesi sağlanmıştır.
 
